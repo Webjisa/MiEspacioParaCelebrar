@@ -1,4 +1,4 @@
-const APP_VERSION='16.0';
+const APP_VERSION='18.0';
 const SUPABASE_URL = 'https://hvuseljtqdgekotrsiwd.supabase.co';
 const SUPABASE_ANON_KEY = window.MIESPACIO_SUPABASE_ANON_KEY || '';
 const ADMIN_EMAIL = 'miespacioparacelebrar@gmail.com';
@@ -105,29 +105,141 @@ async function renderSpaceDetail(){
   <section class="gallery-section"><div class="container gallery">${[s.image,...s.gallery].slice(0,6).map((img,i)=>`<img class="g${i+1}" src="${esc(img)}" alt="${esc(s.name)}">`).join('')}</div></section>
   <section class="section soft"><div class="container details-grid"><div><p class="eyebrow">PRECIOS Y CONDICIONES</p><h2>Lo que debes saber antes de solicitar</h2></div><div class="rule-card"><div><span>Precio</span><strong>${esc(priceRange(s))} según el día</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}${s.cleaningAvailable?`<div><span>Limpieza</span><strong>${euro(s.cleaningPrice)}</strong></div>`:''}<div><span>Reserva</span><strong>Solicitud previa, no confirmación automática</strong></div><div><span>Retención</span><strong>Las fechas se mantienen 72 horas</strong></div></div></div></section>
   <section class="section map-section"><div class="container"><div class="section-head"><div><p class="eyebrow">UBICACIÓN</p><h2>Cómo llegar</h2></div><p class="muted">Ubicación del espacio.</p></div><div id="spaceMap" class="map"></div></div></section>
-  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta el precio de tus fechas</h2><p class="muted">Selecciona las fechas. El sistema calculará el precio según el día. Después podrás enviar una solicitud y el propietario contactará contigo para cerrar las condiciones de la reserva.</p></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><input id="startDate" type="date"><label for="endDate">Fecha de fin</label><input id="endDate" type="date"><label class="check booking-cleaning" ${s.cleaningAvailable?'':'hidden'}><input id="cleaning" type="checkbox"> <span>Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</span></label><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><button class="btn btn-dark full" id="reserveBtn" type="button">Enviar solicitud</button><p class="micro">Las fechas se mantienen retenidas durante 72 horas. La reserva queda confirmada únicamente cuando el propietario la acepta.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
+  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta el precio de tus fechas</h2><p class="muted">Selecciona las fechas. El sistema calculará el precio según el día. Después podrás enviar una solicitud y el propietario contactará contigo para cerrar las condiciones de la reserva.</p></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><div class="date-picker-wrap"><input id="startDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="startDate" aria-label="Abrir calendario">▾</button></div><label for="endDate">Fecha de fin</label><div class="date-picker-wrap"><input id="endDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="endDate" aria-label="Abrir calendario">▾</button></div><div id="bookingCalendar" class="booking-calendar" hidden></div><label class="check booking-cleaning" ${s.cleaningAvailable?'':'hidden'}><input id="cleaning" type="checkbox"> <span>Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</span></label><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><button class="btn btn-dark full" id="reserveBtn" type="button">Enviar solicitud</button><p class="micro">Las fechas se mantienen retenidas durante 72 horas. La reserva queda confirmada únicamente cuando el propietario la acepta.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
   initMap('spaceMap',[s],true);initBooking(s);
 }
+function parseUserDate(value){
+  const v=String(value||'').trim();
+  let y,mo,d,m=v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(m){d=Number(m[1]);mo=Number(m[2]);y=Number(m[3]);}
+  else{m=v.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return '';y=Number(m[1]);mo=Number(m[2]);d=Number(m[3]);}
+  const check=new Date(`${iso}T12:00:00`);
+  if(Number.isNaN(check.getTime())||check.getFullYear()!==y||check.getMonth()+1!==mo||check.getDate()!==d)return '';
+  return iso;
+}
+function displayDate(iso){if(!iso)return '';const [y,m,d]=iso.split('-');return `${d}/${m}/${y}`;}
+function dateToParts(iso){const [y,m,d]=iso.split('-').map(Number);return {y,m,d};}
+function isoFromParts(y,m,d){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function addDaysISO(iso,days){const d=new Date(`${iso}T12:00:00`);d.setDate(d.getDate()+days);return localISODate(d);}
+function dateInRange(iso,start,end){return !!iso&&!!start&&!!end&&iso>=start&&iso<=end;}
+function rangeHasUnavailable(start,end,unavailable){if(!start||!end)return false;let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`);while(d<=last){const iso=localISODate(d);if(unavailable.has(iso))return true;d.setDate(d.getDate()+1);}return false;}
+
+async function getUnavailableDates(spaceId){
+  const map=new Map();
+  const client=await getClient();
+  if(!client||!spaceId)return map;
+  try{
+    const {data,error}=await client.rpc('get_space_unavailable_ranges',{p_space_id:spaceId});
+    if(error)throw error;
+    for(const row of (data||[])){
+      let d=new Date(`${row.start_date}T12:00:00`),last=new Date(`${row.end_date}T12:00:00`);
+      while(d<=last){
+        const iso=localISODate(d);
+        const reason=row.reason==='confirmed'||row.reason==='blocked'?'confirmed':'pending';
+        if(!map.has(iso)||reason==='confirmed')map.set(iso,reason);
+        d.setDate(d.getDate()+1);
+      }
+    }
+  }catch(error){
+    console.warn('No se pudieron cargar las fechas no disponibles:',error);
+  }
+  return map;
+}
+
 function updatePriceBox(s){
-  const box=document.querySelector('#priceBox');if(!box)return;const start=document.querySelector('#startDate').value,end=document.querySelector('#endDate').value;const calc=calculateBookingPrice(s,start,end);if(!calc){box.hidden=true;return;}
-  const cleaning=s.cleaningAvailable&&!!document.querySelector('#cleaning')?.checked?s.cleaningPrice:0;const deposit=Number(s.deposit||0);let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),rows='';
-  while(d<=last){const iso=d.toISOString().slice(0,10),p=priceForDate(s,iso);rows+=`<div><span>${esc(formatDateLong(iso))}</span><strong>${euro(p)}</strong></div>`;d.setDate(d.getDate()+1);}
+  const box=document.querySelector('#priceBox');if(!box)return;
+  const start=parseUserDate(document.querySelector('#startDate')?.value),end=parseUserDate(document.querySelector('#endDate')?.value);
+  const calc=calculateBookingPrice(s,start,end);if(!calc){box.hidden=true;return;}
+  const cleaning=s.cleaningAvailable&&!!document.querySelector('#cleaning')?.checked?s.cleaningPrice:0;
+  const deposit=Number(s.deposit||0);let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),rows='';
+  while(d<=last){const iso=localISODate(d),p=priceForDate(s,iso);rows+=`<div><span>${esc(formatDateLong(iso))}</span><strong>${euro(p)}</strong></div>`;d.setDate(d.getDate()+1);}
   const finalTotal=calc.total+Number(cleaning||0)+deposit;
   box.innerHTML=rows+`<div><span>Total alquiler</span><strong>${euro(calc.total)}</strong></div>${s.cleaningAvailable&&cleaning?`<div><span>Limpieza</span><strong>${euro(cleaning)}</strong></div>`:''}${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(deposit)}</strong></div>`:''}<div class="total"><span>Total <small>(Fianza incluida)</small></span><strong>${euro(finalTotal)}</strong></div>`;box.hidden=false;
 }
-function initBooking(s){
+
+function renderBookingCalendar(state){
+  const cal=document.querySelector('#bookingCalendar');if(!cal)return;
+  const {year,month,activeTarget,start,end,unavailable}=state;
+  const first=new Date(year,month-1,1),daysInMonth=new Date(year,month,0).getDate(),startWeek=(first.getDay()+6)%7;
+  const monthLabel=new Intl.DateTimeFormat('es-ES',{month:'long',year:'numeric'}).format(first);
+  let cells='';
+  const prevMonthDays=new Date(year,month-1,0).getDate();
+  for(let i=0;i<startWeek;i++){
+    const d=prevMonthDays-startWeek+i+1, pm=month===1?12:month-1, py=month===1?year-1:year;
+    cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(py,pm,d)}" disabled>${d}</button>`;
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const iso=isoFromParts(year,month,d),reason=unavailable.get(iso)||'',disabled=!!reason||(state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate);
+    const classes=['calendar-day'];
+    if(reason==='confirmed')classes.push('unavailable-confirmed');
+    if(reason==='pending')classes.push('unavailable-pending');
+    if(dateInRange(iso,start,end))classes.push('selected');
+    if(start&&iso===start)classes.push('selected-start');
+    if(end&&iso===end)classes.push('selected-end');
+    if(iso===localISODate())classes.push('today');
+    cells+=`<button type="button" class="${classes.join(' ')}" data-date="${iso}" ${disabled?'disabled':''}>${d}</button>`;
+  }
+  const trailing=(7-((startWeek+daysInMonth)%7))%7;
+  for(let i=1;i<=trailing;i++){const nm=month===12?1:month+1,ny=month===12?year+1:year;cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(ny,nm,i)}" disabled>${i}</button>`;}
+  cal.innerHTML=`<div class="calendar-head"><button type="button" class="calendar-nav" data-cal-prev aria-label="Mes anterior">‹</button><strong>${esc(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><button type="button" class="calendar-nav" data-cal-next aria-label="Mes siguiente">›</button></div><div class="calendar-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-grid">${cells}</div><div class="calendar-legend"><span><i class="legend-dot confirmed"></i>Ocupada</span><span><i class="legend-dot pending"></i>Retenida</span></div>`;
+  cal.querySelector('[data-cal-prev]')?.addEventListener('click',()=>{let m=month-1,y=year;if(m<1){m=12;y--;}state.month=m;state.year=y;renderBookingCalendar(state);});
+  cal.querySelector('[data-cal-next]')?.addEventListener('click',()=>{let m=month+1,y=year;if(m>12){m=1;y++;}state.month=m;state.year=y;renderBookingCalendar(state);});
+  cal.querySelectorAll('.calendar-day:not(.outside):not([disabled])').forEach(btn=>btn.addEventListener('click',()=>selectCalendarDate(btn.dataset.date,state)));
+}
+function openBookingCalendar(target,state){
+  state.activeTarget=target;const iso=parseUserDate(document.querySelector(`#${target}`)?.value)||state.start||state.minDate||localISODate();const p=dateToParts(iso);state.year=p.y;state.month=p.m;state.open=true;const cal=document.querySelector('#bookingCalendar');if(cal){cal.hidden=false;document.querySelector(`#${target}`)?.setAttribute('aria-expanded','true');renderBookingCalendar(state);}}
+function closeBookingCalendar(){const cal=document.querySelector('#bookingCalendar');if(cal)cal.hidden=true;document.querySelectorAll('.booking-date-input').forEach(el=>el.setAttribute('aria-expanded','false'));}
+function setBookingInput(id,iso){const el=document.querySelector(`#${id}`);if(el){el.value=displayDate(iso);el.dataset.iso=iso;el.classList.remove('date-unavailable','date-invalid');}}
+function validateManualDate(id,state){const el=document.querySelector(`#${id}`);if(!el)return '';const iso=parseUserDate(el.value);el.classList.remove('date-unavailable','date-invalid');if(!iso){if(el.value.trim())el.classList.add('date-invalid');return '';}
+  if((state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate)){el.classList.add('date-unavailable');return iso;}
+  if(state.unavailable.has(iso)){el.classList.add('date-unavailable');return iso;}
+  el.dataset.iso=iso;el.value=displayDate(iso);return iso;
+}
+function selectCalendarDate(iso,state){
+  if(state.unavailable.has(iso)||(state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate))return;
+  if(state.activeTarget==='startDate'){
+    state.start=iso;setBookingInput('startDate',iso);
+    if(!state.end||state.end<iso||state.endWasAuto){state.end=iso;state.endWasAuto=true;setBookingInput('endDate',iso);}
+    else if(rangeHasUnavailable(iso,state.end,state.unavailable)){state.end=iso;state.endWasAuto=true;setBookingInput('endDate',iso);}
+  }else{
+    if(!state.start||iso<state.start){state.start=iso;setBookingInput('startDate',iso);state.end=iso;state.endWasAuto=true;setBookingInput('endDate',iso);}
+    else if(rangeHasUnavailable(state.start,iso,state.unavailable)){state.end=iso;setBookingInput('endDate',iso);}
+    else{state.end=iso;state.endWasAuto=false;setBookingInput('endDate',iso);}
+  }
+  updatePriceBox(state.space);renderBookingCalendar(state);closeBookingCalendar();
+}
+
+async function initBooking(s){
   const btn=document.querySelector('#reserveBtn'),msg=document.querySelector('#message'),startEl=document.querySelector('#startDate'),endEl=document.querySelector('#endDate'),cleanEl=document.querySelector('#cleaning');if(!btn)return;
   const today=localISODate(),minDate=s.activeFrom&&s.activeFrom>today?s.activeFrom:today,maxDate=s.activeUntil||'';
-  startEl.min=minDate;endEl.min=minDate;if(maxDate){startEl.max=maxDate;endEl.max=maxDate;}
-  const initial=minDate;startEl.value=initial;endEl.value=initial;updatePriceBox(s);
-  let endAutoSet=true;
-  startEl.addEventListener('change',()=>{if(endAutoSet||!endEl.value||endEl.value<startEl.value){endEl.value=startEl.value;endAutoSet=true;}else if(endEl.value<startEl.value){endEl.value=startEl.value;endAutoSet=true;}updatePriceBox(s);});
-  endEl.addEventListener('change',()=>{endAutoSet=false;updatePriceBox(s);});
+  const unavailable=await getUnavailableDates(s.id);
+  const state={space:s,minDate,maxDate,unavailable,start:'',end:'',endWasAuto:true,activeTarget:'startDate',year:new Date().getFullYear(),month:new Date().getMonth()+1};
+  const initial=minDate;state.start=initial;state.end=initial;setBookingInput('startDate',initial);setBookingInput('endDate',initial);updatePriceBox(s);
+  document.querySelectorAll('.date-picker-toggle').forEach(toggle=>toggle.addEventListener('click',()=>openBookingCalendar(toggle.dataset.dateTarget,state)));
+  document.querySelectorAll('.booking-date-input').forEach(el=>{
+    el.addEventListener('focus',()=>openBookingCalendar(el.id,state));
+    el.addEventListener('input',()=>{el.classList.remove('date-unavailable','date-invalid');});
+    el.addEventListener('blur',()=>{
+      const iso=validateManualDate(el.id,state);
+      if(!iso){updatePriceBox(s);return;}
+      if(el.id==='startDate'){
+        state.start=iso;
+        if(state.endWasAuto||!state.end||state.end<iso||rangeHasUnavailable(iso,state.end,state.unavailable)){state.end=iso;state.endWasAuto=true;setBookingInput('endDate',iso);}
+      }else{
+        state.end=iso;state.endWasAuto=false;
+        if(state.start&&iso<state.start)el.classList.add('date-invalid');
+      }
+      updatePriceBox(s);
+    });
+  });
+  document.addEventListener('click',e=>{const cal=document.querySelector('#bookingCalendar');if(!cal||cal.hidden)return;if(!cal.contains(e.target)&&!e.target.closest('.date-picker-wrap'))closeBookingCalendar();},{once:false});
   cleanEl?.addEventListener('change',()=>updatePriceBox(s));
   btn.addEventListener('click',async()=>{
-    const start=startEl.value,end=endEl.value,name=document.querySelector('#customerName').value.trim(),email=document.querySelector('#customerEmail').value.trim(),phone=document.querySelector('#customerPhone').value.trim(),cleaning=!!cleanEl?.checked;
-    if(!start||!end||!name||!email||!phone){msg.textContent='Completa todos los datos para enviar la solicitud.';return;}
-    if(end<start){msg.textContent='La fecha de fin no puede ser anterior a la de inicio.';return;}
+    const start=parseUserDate(startEl.value),end=parseUserDate(endEl.value),name=document.querySelector('#customerName').value.trim(),email=document.querySelector('#customerEmail').value.trim(),phone=document.querySelector('#customerPhone').value.trim(),cleaning=!!cleanEl?.checked;
+    startEl.classList.remove('date-unavailable','date-invalid');endEl.classList.remove('date-unavailable','date-invalid');
+    if(!start||!end){msg.textContent='Introduce unas fechas válidas.';return;}
+    if((state.minDate&&start<state.minDate)||(state.maxDate&&end>state.maxDate)||state.unavailable.has(start)||state.unavailable.has(end)||end<start||rangeHasUnavailable(start,end,state.unavailable)){startEl.classList.toggle('date-unavailable',!!state.unavailable.has(start));endEl.classList.toggle('date-unavailable',!!state.unavailable.has(end));msg.textContent='Alguna de las fechas seleccionadas no está disponible. Elige otras fechas.';return;}
+    if(!name||!email||!phone){msg.textContent='Completa todos los datos para enviar la solicitud.';return;}
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Introduce un email válido.';return;}
     if(!/^[0-9+() .-]{6,20}$/.test(phone)){msg.textContent='Introduce un teléfono válido.';return;}
     if(!s.id||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s.id))){msg.textContent='No se ha podido identificar correctamente el espacio. Recarga la página e inténtalo de nuevo.';return;}
@@ -170,7 +282,8 @@ async function renderOwnerBookings(client){
  const box=document.querySelector('#ownerBookings');if(!box)return;
  const {data,error}=await client.rpc('get_owner_bookings');
  if(error){box.innerHTML='<p class="message">No se han podido cargar las solicitudes. Ejecuta la SQL de reservas del área privada.</p>';return;}
- const rows=data||[];
+ const today=localISODate();
+ const rows=(data||[]).sort((a,b)=>{const af=String(a.start_date||''),bf=String(b.start_date||'');const ap=af<today,bp=bf<today;if(ap!==bp)return ap?1:-1;return af.localeCompare(bf)||String(a.created_at||'').localeCompare(String(b.created_at||''));});
  if(!rows.length){box.innerHTML='<p class="muted">No hay solicitudes de reserva.</p>';return;}
  box.innerHTML=`<div class="booking-list">${rows.map(renderOwnerBooking).join('')}</div>`;
  box.querySelectorAll('[data-booking-action]').forEach(btn=>btn.addEventListener('click',async()=>{
@@ -200,7 +313,7 @@ async function initAdminArea(){
    client.rpc('admin_list_owners'), client.rpc('admin_get_all_bookings')
  ]);
  if(spacesRes.error){root.innerHTML='<p class="message">No se han podido cargar los locales: '+esc(spacesRes.error.message)+'</p>';return;}
- const spaces=spacesRes.data||[],owners=ownersRes.data||[],bookings=bookingsRes.data||[];
+ const spaces=spacesRes.data||[],owners=ownersRes.data||[],bookings=(bookingsRes.data||[]).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
  root.innerHTML=`<div class="admin-panel"><div class="section-head"><div><p class="eyebrow">ADMINISTRACIÓN</p><h1>Panel de administración</h1></div><button id="adminLogout" class="btn btn-light" type="button">Cerrar sesión</button></div>
  <p class="muted">Desde aquí gestionas propietarios, locales, periodos de actividad, precios, fianzas y reservas.</p>
  <div class="admin-actions"><button id="newOwner" class="btn btn-dark" type="button">+ Nuevo propietario</button><button id="newSpace" class="btn btn-light" type="button">+ Nuevo local</button></div>
