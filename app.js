@@ -69,7 +69,7 @@ function normalizeSpace(s){
   return {id:s.id,name:s.name,city:s.city,province:s.province,address:s.address||'',latitude:s.latitude,longitude:s.longitude,image:images[0]||FALLBACK_SPACES[0].image,gallery:images.slice(1),description:s.description||'',priceWeekday:s.weekday_price,priceFriday:s.friday_price,priceSaturday:s.saturday_price,priceSunday:s.sunday_price,deposit:s.deposit,hours:formatHours(s.opening_time,s.closing_time),features:(s.space_features||[]).map(x=>x.feature),cleaningAvailable:!!s.cleaning_available,cleaningPrice:s.cleaning_price||0,cancellationPolicy:s.cancellation_policy||'',active:s.active,activeFrom:s.active_from,activeUntil:s.active_until};
 }
 function formatHours(open,close){return open&&close?`${String(open).slice(0,5)}–${String(close).slice(0,5)}`:'Consultar horario';}
-function footer(){return `<footer><div class="container footer-inner"><div><strong>MiEspacioParaCelebrar</strong><p>Tu espacio para celebrar.</p></div><div><p>Admin: <a href="mailto:${ADMIN_EMAIL}">${ADMIN_EMAIL}</a></p></div></div></footer>`;}
+function footer(){return `<footer><div class="container footer-inner"><div class="footer-brand-block"><div class="footer-brand"><img class="footer-logo" src="assets/logo-miespacio-principal.png" alt="MiEspacio Para Celebrar"><strong>MiEspacioParaCelebrar</strong></div><p>Admin: <a href="mailto:${ADMIN_EMAIL}">${ADMIN_EMAIL}</a></p></div></div></footer>`;}
 async function geocodeSpace(s){
   if(Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)))return s;
   const address=[s.address,s.city,s.province,'España'].filter(Boolean).join(', ');if(!s.address)return s;

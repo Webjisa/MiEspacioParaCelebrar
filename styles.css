@@ -30,3 +30,40 @@
 #reserveBtn:disabled{opacity:.65;cursor:wait}
 @media(max-width:560px){.detail-summary div{align-items:flex-start}.detail-summary div strong{max-width:55%;white-space:normal}}
 .booking-financials{margin-top:20px;padding:16px 18px;background:var(--soft);border-radius:16px;max-width:420px}.booking-financials>div{display:flex;justify-content:space-between;gap:18px;padding:5px 0}.booking-financials strong{white-space:nowrap}.booking-financial-total{border-top:1px solid var(--line);margin-top:6px;padding-top:11px!important;font-size:17px}.booking-financials .micro{margin:7px 0 0}.booking-item-main{min-width:0}
+
+
+/* V17 — jerarquía de cabeceras y pie de página */
+.hero h1{font-size:clamp(42px,5.8vw,72px);}
+.section h2{font-size:clamp(30px,4.2vw,46px);}
+.page-intro h1{font-size:clamp(36px,4.6vw,52px);}
+.space-info h3,.space-info h2{font-size:40px;}
+.space-detail-heading h1{font-size:clamp(46px,6.6vw,78px);}
+.intro-purpose h2{font-size:clamp(34px,4.2vw,50px);}
+.space-tile-info h2{font-size:28px;}
+.home-link h3{font-size:27px;}
+.admin-panel h1{font-size:clamp(38px,5vw,58px);}
+.brand-hero h1{font-size:clamp(38px,5vw,60px);}
+.owner-space h3{font-size:23px;}
+.booking-item h3{font-size:22px;}
+
+.footer-inner{display:flex;justify-content:flex-start;}
+.footer-brand-block{display:block;}
+.footer-brand{display:flex;align-items:center;gap:14px;}
+.footer-logo{display:block;width:72px;height:46px;object-fit:contain;}
+.footer-brand strong{font-size:18px;}
+.footer-brand-block>p{margin:8px 0 0 86px;}
+
+@media(max-width:850px){
+  .footer-inner{display:block;}
+}
+
+@media(max-width:560px){
+  .hero h1{font-size:42px;}
+  .page-intro h1{font-size:42px;}
+  .section h2{font-size:32px;}
+  .space-info h3,.space-info h2{font-size:34px;}
+  .space-detail-heading h1{font-size:46px;}
+  .intro-purpose h2{font-size:34px;}
+  .brand-hero h1{font-size:42px;}
+  .footer-brand-block>p{margin-left:0;}
+}
