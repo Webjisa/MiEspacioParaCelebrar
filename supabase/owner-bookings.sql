@@ -1,5 +1,6 @@
 -- MiEspacioParaCelebrar — solicitudes en área privada
--- ▶️ SOLO EJECUTAR en Supabase SQL Editor. No es necesario guardarlo aparte.
+-- 🗂️ GUARDAR — Owner bookings RPC
+-- ▶️ SOLO EJECUTAR en Supabase SQL Editor.
 
 create or replace function public.get_owner_bookings()
 returns table (
@@ -26,19 +27,23 @@ begin
     raise exception 'No tienes permisos de propietario';
   end if;
 
-  update public.bookings
-  set booking_status='expired'
-  where booking_status='pending'
-    and expires_at is not null
-    and expires_at < now()
-    and space_id in (select id from public.spaces where owner_id=private.current_owner_id());
-
   return query
-  select b.id,b.space_id,s.name,b.customer_name,b.customer_email,b.customer_phone,
-         b.start_date,b.end_date,b.total_days,b.cleaning_requested,b.booking_status,
-         b.expires_at,b.created_at
+  select
+    b.id,
+    b.space_id,
+    s.name,
+    b.customer_name,
+    b.customer_email,
+    b.customer_phone,
+    b.start_date,
+    b.end_date,
+    b.total_days,
+    b.cleaning_requested,
+    b.booking_status,
+    b.expires_at,
+    b.created_at
   from public.bookings b
-  join public.spaces s on s.id=b.space_id
+  inner join public.spaces s on s.id=b.space_id
   where s.owner_id=private.current_owner_id()
   order by b.created_at desc;
 end;

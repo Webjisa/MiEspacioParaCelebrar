@@ -2,15 +2,19 @@ const SUPABASE_URL = 'https://hvuseljtqdgekotrsiwd.supabase.co';
 const SUPABASE_ANON_KEY = window.MIESPACIO_SUPABASE_ANON_KEY || '';
 const ADMIN_EMAIL = 'miespacioparacelebrar@gmail.com';
 
+const LA_NUBE_ID = '340c371d-e09b-4a59-bfaa-343d7509a35c';
+
+// Fallback de emergencia únicamente para La Nube. El ID es el UUID real de Supabase.
+// Nunca se debe usar un identificador de prueba como "la-nube" para crear reservas.
 const FALLBACK_SPACES = [{
-  id:'la-nube', name:'La Nube', city:'Lucena', province:'Córdoba', address:'', latitude:37.417400, longitude:-4.485511,
+  id:LA_NUBE_ID, name:'La Nube', city:'Lucena', province:'Córdoba', address:'', latitude:37.417400, longitude:-4.485511,
   image:'assets/7c24953f-0f92-43e4-9c18-c534940cba2e.jpg',
   description:'Espacio privado para cumpleaños, reuniones familiares y celebraciones.',
   priceWeekday:120, priceFriday:150, priceSaturday:150, priceSunday:150,
-  deposit:null, hours:'11:00–23:00 / 00:00',
+  deposit:50, hours:'11:00–23:00 / 00:00',
   features:['80 sillas','14 mesas','Cocina equipada','Aseos adaptados','Climatización independiente','Monitor/a infantil 3 h','Pista de fútbol','Parque infantil','Cama elástica'],
   gallery:['assets/44728f3e-b83b-415f-918a-0e77a90f1819.jpg','assets/78462fe7-2189-4361-8f27-d57f847d9b02.jpg','assets/9801f99c-b3cc-4bf1-a330-c8ba9e7b0564.jpg','assets/1cc39359-35d7-44a7-937c-df9c444bcf6c.jpg','assets/74dd0b0f-06b9-4ed7-8be5-b277926c49a9.jpg'],
-  cleaningAvailable:false, cleaningPrice:0, cancellationPolicy:'', active:true, activeFrom:null, activeUntil:null
+  cleaningAvailable:false, cleaningPrice:0, cancellationPolicy:'', active:true, activeFrom:'2026-09-25', activeUntil:'2027-12-31'
 }];
 
 const euro=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(n||0));
@@ -19,18 +23,39 @@ const isActive=s=>{if(s.active===false)return false;const now=new Date();if(s.ac
 const getSortedSpaces=spaces=>[...spaces].filter(isActive).sort((a,b)=>a.name.localeCompare(b.name,'es',{sensitivity:'base'}));
 
 async function getClient(){
-  if(!SUPABASE_ANON_KEY)return null;
-  if(!window.supabase)return null;
+  if(!SUPABASE_ANON_KEY||!window.supabase)return null;
   try{return window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}catch(error){console.error('Error creando cliente Supabase:',error);return null;}
 }
+
 async function getPublicSpaces(){
   const client=await getClient();
-  if(!client)return FALLBACK_SPACES.filter(isActive);
+  if(!client){
+    window.__publicSpacesError='No se ha podido conectar con la base de datos pública.';
+    return FALLBACK_SPACES.filter(isActive);
+  }
   try{
-    const {data,error}=await client.from('spaces').select(`id,name,city,province,address,latitude,longitude,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,active,active_from,active_until,space_features(feature),space_images(image_url,sort_order)`).eq('active',true).order('name');
+    // Consulta principal separada de las relaciones para que un fallo de imágenes/features
+    // no convierta el espacio en un falso ID de prueba.
+    const {data,error}=await client.from('spaces').select('id,name,city,province,address,latitude,longitude,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,active,active_from,active_until').eq('active',true).order('name');
     if(error)throw error;
-    return (data||[]).filter(isActive).map(normalizeSpace);
-  }catch(error){console.warn('No se pudieron cargar los espacios públicos:',error);return FALLBACK_SPACES.filter(isActive);}
+    const active=(data||[]).filter(s=>isActive({active:s.active,activeFrom:s.active_from,activeUntil:s.active_until}));
+    const normalized=[];
+    for(const s of active){
+      let features=[],images=[];
+      const featureRes=await client.from('space_features').select('feature').eq('space_id',s.id).order('sort_order');
+      if(!featureRes.error)features=(featureRes.data||[]).map(x=>x.feature).filter(Boolean);
+      const imageRes=await client.from('space_images').select('image_url,sort_order').eq('space_id',s.id).order('sort_order');
+      if(!imageRes.error)images=(imageRes.data||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(x=>x.image_url).filter(Boolean);
+      normalized.push(normalizeSpace({...s,space_features:features.map(feature=>({feature})),space_images:images.map((image_url,i)=>({image_url,sort_order:i}))}));
+    }
+    window.__publicSpacesError='';
+    return normalized;
+  }catch(error){
+    console.warn('No se pudieron cargar los espacios públicos:',error);
+    window.__publicSpacesError=error?.message||'No se pudieron cargar los espacios.';
+    // Emergencia: La Nube conserva su UUID real, nunca un alias textual.
+    return FALLBACK_SPACES.filter(isActive);
+  }
 }
 function normalizeSpace(s){
   const images=(s.space_images||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(x=>x.image_url).filter(Boolean);
@@ -39,59 +64,72 @@ function normalizeSpace(s){
 function formatHours(open,close){return open&&close?`${String(open).slice(0,5)}–${String(close).slice(0,5)}`:'Consultar horario';}
 function footer(){return `<footer><div class="container footer-inner"><div><strong>MiEspacioParaCelebrar</strong><p>Tu espacio para celebrar.</p></div><div><p>Admin: <a href="mailto:${ADMIN_EMAIL}">${ADMIN_EMAIL}</a></p></div></div></footer>`;}
 async function geocodeSpace(s){
-  if(Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude))) return s;
-  const address=[s.address,s.city,s.province,'España'].filter(Boolean).join(', ');
-  if(!s.address)return s;
+  if(Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)))return s;
+  const address=[s.address,s.city,s.province,'España'].filter(Boolean).join(', ');if(!s.address)return s;
   const key='miespacio_geocode_'+encodeURIComponent(address.toLowerCase());
-  try{const cached=sessionStorage.getItem(key);if(cached){const c=JSON.parse(cached);return {...s,latitude:Number(c.lat),longitude:Number(c.lon)};}}
-  catch(_){ }
-  try{
-    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=es&q='+encodeURIComponent(address);
-    const r=await fetch(url,{headers:{Accept:'application/json'}});
-    if(!r.ok)return s;
-    const data=await r.json();
-    if(!data.length)return s;
-    const result={lat:data[0].lat,lon:data[0].lon};
-    try{sessionStorage.setItem(key,JSON.stringify(result));}catch(_){ }
-    return {...s,latitude:Number(result.lat),longitude:Number(result.lon)};
-  }catch(error){console.warn('No se pudo geolocalizar',address,error);return s;}
+  try{const cached=sessionStorage.getItem(key);if(cached){const c=JSON.parse(cached);return {...s,latitude:Number(c.lat),longitude:Number(c.lon)};}}catch(_){ }
+  try{const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=es&q='+encodeURIComponent(address);const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)return s;const data=await r.json();if(!data.length)return s;const result={lat:data[0].lat,lon:data[0].lon};try{sessionStorage.setItem(key,JSON.stringify(result));}catch(_){ }return {...s,latitude:Number(result.lat),longitude:Number(result.lon)};}catch(error){console.warn('No se pudo geolocalizar',address,error);return s;}
 }
 async function initMap(id,spaces,single=false){
-  const el=document.getElementById(id);if(!el||!window.L)return;
-  el.innerHTML='<div class="map-loading">Cargando ubicación…</div>';
+  const el=document.getElementById(id);if(!el||!window.L)return;el.innerHTML='<div class="map-loading">Cargando ubicación…</div>';
   const resolved=[];for(const s of spaces)resolved.push(await geocodeSpace(s));
   const points=resolved.filter(s=>Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)));
   if(!points.length){el.innerHTML='<div class="map-empty">La ubicación exacta todavía no está configurada. El administrador puede introducir la dirección y localizar el espacio desde su área privada.</div>';return;}
-  const map=L.map(el,{scrollWheelZoom:false});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-  const bounds=[];
+  const map=L.map(el,{scrollWheelZoom:false});L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const bounds=[];
   points.forEach(s=>{const p=[Number(s.latitude),Number(s.longitude)];bounds.push(p);L.marker(p).addTo(map).bindPopup(`<strong>${esc(s.name)}</strong><br>${esc(s.city)}${single?'':' · '+esc(s.province)}${single?'':'<br><a href="espacio.html?id='+encodeURIComponent(s.id)+'">Ver espacio</a>'}`);});
-  if(single)map.setView(bounds[0],17);else map.fitBounds(bounds,{padding:[35,35],maxZoom:16});
-  setTimeout(()=>map.invalidateSize(),150);
+  if(single)map.setView(bounds[0],17);else map.fitBounds(bounds,{padding:[35,35],maxZoom:16});setTimeout(()=>map.invalidateSize(),150);
 }
 
-function priceForDate(s,date){
-  if(!date)return null;const d=new Date(`${date}T12:00:00`);const day=d.getDay();
-  if(day===5)return s.priceFriday; if(day===6)return s.priceSaturday; if(day===0)return s.priceSunday; return s.priceWeekday;
-}
+function priceForDate(s,date){if(!date)return null;const d=new Date(`${date}T12:00:00`),day=d.getDay();if(day===5)return s.priceFriday;if(day===6)return s.priceSaturday;if(day===0)return s.priceSunday;return s.priceWeekday;}
 function formatDateLong(date){if(!date)return '';return new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(`${date}T12:00:00`));}
 function calculateBookingPrice(s,start,end){if(!start||!end||end<start)return null;let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),total=0,days=0;while(d<=last){total+=Number(priceForDate(s,d.toISOString().slice(0,10))||0);days++;d.setDate(d.getDate()+1);}return {days,total};}
+function localISODate(date=new Date()){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
+function priceRange(s){const values=[s.priceWeekday,s.priceFriday,s.priceSaturday,s.priceSunday].map(Number).filter(Number.isFinite);if(!values.length)return 'Consultar';const min=Math.min(...values),max=Math.max(...values);return min===max?euro(min):`${euro(min)} – ${euro(max)}`;}
 
-async function renderSpaces(){const grid=document.querySelector('#spacesGrid');if(!grid)return;const spaces=await getPublicSpaces();window.__publicSpaces=spaces;grid.innerHTML=spaces.length?spaces.map(s=>`<a class="space-tile" href="espacio.html?id=${encodeURIComponent(s.id)}"><div class="space-tile-photo"><img src="${esc(s.image)}" alt="${esc(s.name)}"></div><div class="space-tile-info"><h2>${esc(s.name)}</h2><p>${esc(s.city)} · ${esc(s.province)}</p><div class="space-tile-price">Precio según el día</div></div></a>`).join(''):'<p class="muted">No hay espacios disponibles en este momento.</p>';}
+async function renderSpaces(){const grid=document.querySelector('#spacesGrid');if(!grid)return;const spaces=await getPublicSpaces();window.__publicSpaces=spaces;grid.innerHTML=spaces.length?spaces.map(s=>`<a class="space-tile" href="espacio.html?id=${encodeURIComponent(s.id)}"><div class="space-tile-photo"><img src="${esc(s.image)}" alt="${esc(s.name)}"></div><div class="space-tile-info"><h2>${esc(s.name)}</h2><p>${esc(s.city)} · ${esc(s.province)}</p><div class="space-tile-price">${esc(priceRange(s))}</div></div></a>`).join(''):'<p class="muted">No hay espacios disponibles en este momento.</p>';}
 async function getSelectedSpace(){const id=new URLSearchParams(location.search).get('id');const spaces=await getPublicSpaces();return spaces.find(s=>String(s.id)===String(id));}
 
-async function renderSpaceDetail(){const root=document.querySelector('#spaceDetail');if(!root)return;const s=await getSelectedSpace();if(!s){root.innerHTML='<section class="section"><div class="container"><h1>Espacio no disponible</h1><p class="muted">Este espacio ya no está disponible públicamente.</p><a class="btn btn-dark" href="espacios.html">Ver espacios</a></div></section>';return;}document.title=`${s.name} · MiEspacioParaCelebrar`;
-  
+async function renderSpaceDetail(){
+  const root=document.querySelector('#spaceDetail');if(!root)return;const s=await getSelectedSpace();
+  if(!s){root.innerHTML='<section class="section"><div class="container"><h1>Espacio no disponible</h1><p class="muted">Este espacio ya no está disponible públicamente.</p><a class="btn btn-dark" href="espacios.html">Ver espacios</a></div></section>';return;}
+  document.title=`${s.name} · MiEspacioParaCelebrar`;
   root.innerHTML=`<section class="space-detail-hero"><div class="space-detail-image"><img src="${esc(s.image)}" alt="${esc(s.name)}"></div><div class="container space-detail-heading"><p class="eyebrow">${esc(s.city)} · ${esc(s.province)}</p><h1>${esc(s.name)}</h1><p>${esc(s.description)}</p></div></section>
-  <section class="section"><div class="container detail-main"><div><p class="eyebrow">EL ESPACIO</p><h2>Todo lo que necesitas para celebrar</h2><div class="feature-list feature-list-large">${s.features.map(f=>`<span>${esc(f)}</span>`).join('')}</div></div><div class="detail-summary"><div><span>Precio</span><strong>Según el día</strong></div><div><span>Horario</span><strong>${esc(s.hours)}</strong></div><a class="btn btn-dark full" href="#disponibilidad">Solicitar reserva</a></div></div></section>
+  <section class="section"><div class="container detail-main"><div><p class="eyebrow">EL ESPACIO</p><h2>Todo lo que necesitas para celebrar</h2><div class="feature-list feature-list-large">${s.features.map(f=>`<span>${esc(f)}</span>`).join('')}</div></div><div class="detail-summary"><div><span>Precio</span><strong>${esc(priceRange(s))}</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}<div><span>Horario</span><strong>${esc(s.hours)}</strong></div><a class="btn btn-dark full" href="#disponibilidad">Solicitar reserva</a></div></div></section>
   <section class="gallery-section"><div class="container gallery">${[s.image,...s.gallery].slice(0,6).map((img,i)=>`<img class="g${i+1}" src="${esc(img)}" alt="${esc(s.name)}">`).join('')}</div></section>
-  <section class="section soft"><div class="container details-grid"><div><p class="eyebrow">PRECIOS Y CONDICIONES</p><h2>Lo que debes saber antes de solicitar</h2></div><div class="rule-card"><div><span>Precio</span><strong>Se calcula según el día seleccionado</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}${s.cleaningAvailable?`<div><span>Limpieza</span><strong>${euro(s.cleaningPrice)}</strong></div>`:''}<div><span>Reserva</span><strong>Solicitud previa, no confirmación automática</strong></div><div><span>Retención</span><strong>Las fechas se mantienen 72 horas</strong></div></div></div></section>
+  <section class="section soft"><div class="container details-grid"><div><p class="eyebrow">PRECIOS Y CONDICIONES</p><h2>Lo que debes saber antes de solicitar</h2></div><div class="rule-card"><div><span>Precio</span><strong>${esc(priceRange(s))} según el día</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}${s.cleaningAvailable?`<div><span>Limpieza</span><strong>${euro(s.cleaningPrice)}</strong></div>`:''}<div><span>Reserva</span><strong>Solicitud previa, no confirmación automática</strong></div><div><span>Retención</span><strong>Las fechas se mantienen 72 horas</strong></div></div></div></section>
   <section class="section map-section"><div class="container"><div class="section-head"><div><p class="eyebrow">UBICACIÓN</p><h2>Cómo llegar</h2></div><p class="muted">Ubicación del espacio.</p></div><div id="spaceMap" class="map"></div></div></section>
-  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta el precio de tus fechas</h2><p class="muted">Selecciona las fechas. El sistema calculará el precio según el día. Después podrás enviar una solicitud y el propietario contactará contigo para cerrar la reserva.</p></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><input id="startDate" type="date"><label for="endDate">Fecha de fin</label><input id="endDate" type="date"><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><label class="check"><input id="cleaning" type="checkbox" ${s.cleaningAvailable?'':'disabled'}> Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</label><button class="btn btn-dark full" id="reserveBtn" type="button">Enviar solicitud</button><p class="micro">Las fechas se mantienen retenidas durante 72 horas. La reserva queda confirmada únicamente cuando el propietario la acepta.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
+  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta el precio de tus fechas</h2><p class="muted">Selecciona las fechas. El sistema calculará el precio según el día. Después podrás enviar una solicitud y el propietario contactará contigo para cerrar las condiciones de la reserva.</p></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><input id="startDate" type="date"><label for="endDate">Fecha de fin</label><input id="endDate" type="date"><label class="check booking-cleaning" ${s.cleaningAvailable?'':'hidden'}><input id="cleaning" type="checkbox"> <span>Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</span></label><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><button class="btn btn-dark full" id="reserveBtn" type="button">Enviar solicitud</button><p class="micro">Las fechas se mantienen retenidas durante 72 horas. La reserva queda confirmada únicamente cuando el propietario la acepta.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
   initMap('spaceMap',[s],true);initBooking(s);
 }
-function updatePriceBox(s){const box=document.querySelector('#priceBox');if(!box)return;const start=document.querySelector('#startDate').value,end=document.querySelector('#endDate').value;const calc=calculateBookingPrice(s,start,end);if(!calc){box.hidden=true;return;}let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),rows='';while(d<=last){const iso=d.toISOString().slice(0,10),p=priceForDate(s,iso);rows+=`<div><span>${esc(formatDateLong(iso))}</span><strong>${euro(p)}</strong></div>`;d.setDate(d.getDate()+1);}box.innerHTML=rows+`<div class="total"><span>Total alquiler</span><strong>${euro(calc.total)}</strong></div>`+(s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:'');box.hidden=false;}
-function initBooking(s){const btn=document.querySelector('#reserveBtn'),msg=document.querySelector('#message');if(!btn)return;document.querySelector('#startDate').addEventListener('change',()=>updatePriceBox(s));document.querySelector('#endDate').addEventListener('change',()=>updatePriceBox(s));btn.addEventListener('click',async()=>{const start=document.querySelector('#startDate').value,end=document.querySelector('#endDate').value,name=document.querySelector('#customerName').value.trim(),email=document.querySelector('#customerEmail').value.trim(),phone=document.querySelector('#customerPhone').value.trim(),cleaning=!!document.querySelector('#cleaning').checked;if(!start||!end||!name||!email||!phone){msg.textContent='Completa todos los datos para enviar la solicitud.';return;}if(end<start){msg.textContent='La fecha de fin no puede ser anterior a la de inicio.';return;}if(!window.supabase||!SUPABASE_ANON_KEY){msg.textContent='La solicitud online se activará al conectar la base de datos pública.';return;}msg.textContent='Enviando solicitud…';btn.disabled=true;try{const client=await getClient();const {error}=await client.rpc('create_booking_request',{p_space_id:s.id,p_customer_name:name,p_customer_email:email,p_customer_phone:phone,p_start_date:start,p_end_date:end,p_cleaning_requested:cleaning});if(error)throw error;msg.textContent='Solicitud enviada. El propietario contactará contigo para acordar las condiciones y confirmar la reserva.';}catch(e){msg.textContent=e.message||'No se ha podido enviar la solicitud.';btn.disabled=false;}});}
+function updatePriceBox(s){
+  const box=document.querySelector('#priceBox');if(!box)return;const start=document.querySelector('#startDate').value,end=document.querySelector('#endDate').value;const calc=calculateBookingPrice(s,start,end);if(!calc){box.hidden=true;return;}
+  const cleaning=s.cleaningAvailable&&!!document.querySelector('#cleaning')?.checked?s.cleaningPrice:0;const deposit=Number(s.deposit||0);let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),rows='';
+  while(d<=last){const iso=d.toISOString().slice(0,10),p=priceForDate(s,iso);rows+=`<div><span>${esc(formatDateLong(iso))}</span><strong>${euro(p)}</strong></div>`;d.setDate(d.getDate()+1);}
+  const finalTotal=calc.total+Number(cleaning||0)+deposit;
+  box.innerHTML=rows+`<div><span>Total alquiler</span><strong>${euro(calc.total)}</strong></div>${s.cleaningAvailable&&cleaning?`<div><span>Limpieza</span><strong>${euro(cleaning)}</strong></div>`:''}${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(deposit)}</strong></div>`:''}<div class="total"><span>Total <small>(Fianza incluida)</small></span><strong>${euro(finalTotal)}</strong></div>`;box.hidden=false;
+}
+function initBooking(s){
+  const btn=document.querySelector('#reserveBtn'),msg=document.querySelector('#message'),startEl=document.querySelector('#startDate'),endEl=document.querySelector('#endDate'),cleanEl=document.querySelector('#cleaning');if(!btn)return;
+  const today=localISODate(),minDate=s.activeFrom&&s.activeFrom>today?s.activeFrom:today,maxDate=s.activeUntil||'';
+  startEl.min=minDate;endEl.min=minDate;if(maxDate){startEl.max=maxDate;endEl.max=maxDate;}
+  const initial=minDate;startEl.value=initial;endEl.value=initial;updatePriceBox(s);
+  let endAutoSet=true;
+  startEl.addEventListener('change',()=>{if(endAutoSet||!endEl.value||endEl.value<startEl.value){endEl.value=startEl.value;endAutoSet=true;}else if(endEl.value<startEl.value){endEl.value=startEl.value;endAutoSet=true;}updatePriceBox(s);});
+  endEl.addEventListener('change',()=>{endAutoSet=false;updatePriceBox(s);});
+  cleanEl?.addEventListener('change',()=>updatePriceBox(s));
+  btn.addEventListener('click',async()=>{
+    const start=startEl.value,end=endEl.value,name=document.querySelector('#customerName').value.trim(),email=document.querySelector('#customerEmail').value.trim(),phone=document.querySelector('#customerPhone').value.trim(),cleaning=!!cleanEl?.checked;
+    if(!start||!end||!name||!email||!phone){msg.textContent='Completa todos los datos para enviar la solicitud.';return;}
+    if(end<start){msg.textContent='La fecha de fin no puede ser anterior a la de inicio.';return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Introduce un email válido.';return;}
+    if(!/^[0-9+() .-]{6,20}$/.test(phone)){msg.textContent='Introduce un teléfono válido.';return;}
+    if(!s.id||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s.id))){msg.textContent='No se ha podido identificar correctamente el espacio. Recarga la página e inténtalo de nuevo.';return;}
+    const client=await getClient();if(!client){msg.textContent='No se ha podido conectar con el sistema de reservas. Recarga la página e inténtalo de nuevo.';return;}
+    msg.textContent='Enviando solicitud…';btn.disabled=true;
+    try{const {error}=await client.rpc('create_booking_request',{p_space_id:s.id,p_customer_name:name,p_customer_email:email,p_customer_phone:phone,p_start_date:start,p_end_date:end,p_cleaning_requested:cleaning});if(error)throw error;msg.textContent='Solicitud enviada correctamente. El propietario ha recibido la solicitud y contactará contigo para acordar las condiciones y confirmar la reserva.';btn.textContent='Solicitud enviada';}
+    catch(e){console.error('Error creando solicitud:',e);msg.textContent=e.message||'No se ha podido enviar la solicitud.';btn.disabled=false;}
+  });
+}
 
 async function renderHome(){return;}
 async function renderSpacesMap(){const map=document.querySelector('#spacesMap');if(!map)return;const spaces=window.__publicSpaces||await getPublicSpaces();initMap('spacesMap',spaces,false);}

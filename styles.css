@@ -19,3 +19,13 @@
 .brand-hero-logo{background:transparent}
 @media(max-width:700px){.nav nav.home-nav{gap:10px}.nav nav.home-nav a.nav-cta{min-height:42px;padding:0 16px;font-size:13px}}
 @media(max-width:560px){.brand-logo{width:128px;max-height:54px}.nav nav.home-nav a.nav-cta{padding:0 13px;font-size:12px}.nav nav.home-nav a:not(.nav-cta){display:none}}
+
+/* v13 — reserva, precios y fianza */
+.detail-summary div strong{white-space:nowrap;text-align:right}
+.booking-cleaning{margin:4px 0 16px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;display:flex;gap:9px;align-items:center}
+.booking-cleaning[hidden]{display:none}
+.booking-cleaning input{margin:0}
+.price-box .total{font-weight:800;font-size:16px}
+.price-box .total small{font-size:11px;color:var(--muted);font-weight:700}
+#reserveBtn:disabled{opacity:.65;cursor:wait}
+@media(max-width:560px){.detail-summary div{align-items:flex-start}.detail-summary div strong{max-width:55%;white-space:normal}}
