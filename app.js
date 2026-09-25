@@ -1,3 +1,4 @@
+const APP_VERSION='16.0';
 const SUPABASE_URL = 'https://hvuseljtqdgekotrsiwd.supabase.co';
 const SUPABASE_ANON_KEY = window.MIESPACIO_SUPABASE_ANON_KEY || '';
 const ADMIN_EMAIL = 'miespacioparacelebrar@gmail.com';
@@ -46,7 +47,13 @@ async function getPublicSpaces(){
       if(!featureRes.error)features=(featureRes.data||[]).map(x=>x.feature).filter(Boolean);
       const imageRes=await client.from('space_images').select('image_url,sort_order').eq('space_id',s.id).order('sort_order');
       if(!imageRes.error)images=(imageRes.data||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(x=>x.image_url).filter(Boolean);
-      normalized.push(normalizeSpace({...s,space_features:features.map(feature=>({feature})),space_images:images.map((image_url,i)=>({image_url,sort_order:i}))}));
+      let normalizedSpace=normalizeSpace({...s,space_features:features.map(feature=>({feature})),space_images:images.map((image_url,i)=>({image_url,sort_order:i}))});
+      // Salvaguarda para La Nube: mientras se termina la configuración de servicios,
+      // su ficha debe reflejar la configuración confirmada en Supabase.
+      if(String(normalizedSpace.id)===LA_NUBE_ID){
+        normalizedSpace={...normalizedSpace,cleaningAvailable:true,cleaningPrice:50,deposit:normalizedSpace.deposit==null?50:normalizedSpace.deposit};
+      }
+      normalized.push(normalizedSpace);
     }
     window.__publicSpacesError='';
     return normalized;

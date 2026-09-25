@@ -1,3 +1,5 @@
+
+> Versión de entrega: v16
 # MiEspacioParaCelebrar
 
 Web pública y base para la gestión privada de espacios para celebraciones.
