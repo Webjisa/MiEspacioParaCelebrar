@@ -29,3 +29,4 @@
 .price-box .total small{font-size:11px;color:var(--muted);font-weight:700}
 #reserveBtn:disabled{opacity:.65;cursor:wait}
 @media(max-width:560px){.detail-summary div{align-items:flex-start}.detail-summary div strong{max-width:55%;white-space:normal}}
+.booking-financials{margin-top:20px;padding:16px 18px;background:var(--soft);border-radius:16px;max-width:420px}.booking-financials>div{display:flex;justify-content:space-between;gap:18px;padding:5px 0}.booking-financials strong{white-space:nowrap}.booking-financial-total{border-top:1px solid var(--line);margin-top:6px;padding-top:11px!important;font-size:17px}.booking-financials .micro{margin:7px 0 0}.booking-item-main{min-width:0}

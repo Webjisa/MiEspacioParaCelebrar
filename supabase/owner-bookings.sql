@@ -1,5 +1,5 @@
 -- MiEspacioParaCelebrar — solicitudes en área privada
--- 🗂️ GUARDAR — Owner bookings RPC
+-- 🗂️ GUARDAR — Owner bookings + pricing v2
 -- ▶️ SOLO EJECUTAR en Supabase SQL Editor.
 
 create or replace function public.get_owner_bookings()
@@ -16,7 +16,11 @@ returns table (
   cleaning_requested boolean,
   booking_status text,
   expires_at timestamptz,
-  created_at timestamptz
+  created_at timestamptz,
+  rental_total numeric,
+  cleaning_total numeric,
+  deposit numeric,
+  grand_total numeric
 )
 language plpgsql
 security definer
@@ -41,10 +45,20 @@ begin
     b.cleaning_requested,
     b.booking_status,
     b.expires_at,
-    b.created_at
+    b.created_at,
+    pricing.rental_total,
+    pricing.cleaning_total,
+    pricing.deposit,
+    pricing.grand_total
   from public.bookings b
-  inner join public.spaces s on s.id=b.space_id
-  where s.owner_id=private.current_owner_id()
+  inner join public.spaces s on s.id = b.space_id
+  cross join lateral public.get_booking_pricing(
+    b.space_id,
+    b.start_date,
+    b.end_date,
+    b.cleaning_requested
+  ) pricing
+  where s.owner_id = private.current_owner_id()
   order by b.created_at desc;
 end;
 $$;

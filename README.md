@@ -33,3 +33,10 @@ El frontend necesita la clave pública de Supabase en `supabase-config.js` para 
 
 La ubicación facilitada para **La Nube** es `37.417400, -4.485511`.
 La SQL `supabase/set-la-nube-location.sql` actualiza esas coordenadas en Supabase.
+
+## v14 — precios de la solicitud
+- El área del propietario muestra alquiler, limpieza, fianza y total.
+- El cálculo se centraliza en `public.get_booking_pricing` y no guarda importes económicos en `bookings`.
+- La fianza se suma una sola vez.
+- El alquiler se calcula día por día según lunes-jueves, viernes, sábado y domingo.
+- El mismo cálculo queda preparado para reutilizarlo en las notificaciones por email.

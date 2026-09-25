@@ -14,7 +14,7 @@ const FALLBACK_SPACES = [{
   deposit:50, hours:'11:00–23:00 / 00:00',
   features:['80 sillas','14 mesas','Cocina equipada','Aseos adaptados','Climatización independiente','Monitor/a infantil 3 h','Pista de fútbol','Parque infantil','Cama elástica'],
   gallery:['assets/44728f3e-b83b-415f-918a-0e77a90f1819.jpg','assets/78462fe7-2189-4361-8f27-d57f847d9b02.jpg','assets/9801f99c-b3cc-4bf1-a330-c8ba9e7b0564.jpg','assets/1cc39359-35d7-44a7-937c-df9c444bcf6c.jpg','assets/74dd0b0f-06b9-4ed7-8be5-b277926c49a9.jpg'],
-  cleaningAvailable:false, cleaningPrice:0, cancellationPolicy:'', active:true, activeFrom:'2026-09-25', activeUntil:'2027-12-31'
+  cleaningAvailable:true, cleaningPrice:50, cancellationPolicy:'', active:true, activeFrom:'2026-09-25', activeUntil:'2027-12-31'
 }];
 
 const euro=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(n||0));
@@ -36,7 +36,7 @@ async function getPublicSpaces(){
   try{
     // Consulta principal separada de las relaciones para que un fallo de imágenes/features
     // no convierta el espacio en un falso ID de prueba.
-    const {data,error}=await client.from('spaces').select('id,name,city,province,address,latitude,longitude,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,active,active_from,active_until').eq('active',true).order('name');
+    const {data,error}=await client.from('spaces').select('id,name,city,province,latitude,longitude,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,active,active_from,active_until').eq('active',true).order('name');
     if(error)throw error;
     const active=(data||[]).filter(s=>isActive({active:s.active,activeFrom:s.active_from,activeUntil:s.active_until}));
     const normalized=[];
@@ -178,7 +178,8 @@ async function renderOwnerBookings(client){
 function renderOwnerBooking(b){
  const statusLabels={pending:'Pendiente',confirmed:'Confirmada',rejected:'Rechazada',expired:'Caducada',cancelled:'Cancelada'};
  const pending=b.booking_status==='pending';
- return `<article class="booking-item"><div class="booking-item-main"><div class="booking-item-head"><div><p class="eyebrow">${esc(b.space_name||'Espacio')}</p><h3>${esc(b.customer_name)}</h3></div><span class="status status-${esc(b.booking_status)}">${statusLabels[b.booking_status]||esc(b.booking_status)}</span></div><div class="booking-meta"><span><strong>Fechas</strong>${formatDateLong(b.start_date)} → ${formatDateLong(b.end_date)}</span><span><strong>Días</strong>${esc(b.total_days)}</span><span><strong>Teléfono</strong>${esc(b.customer_phone)}</span><span><strong>Email</strong>${esc(b.customer_email)}</span><span><strong>Limpieza</strong>${b.cleaning_requested?'Sí':'No'}</span></div></div>${pending?`<div class="booking-actions"><button class="btn btn-dark" data-booking-action="confirm" data-id="${esc(b.id)}">Aceptar</button><button class="btn btn-light" data-booking-action="reject" data-id="${esc(b.id)}">Rechazar</button></div>`:''}</article>`;
+ const rental=Number(b.rental_total||0),cleaning=Number(b.cleaning_total||0),deposit=Number(b.deposit||0),grand=Number(b.grand_total||0);
+ return `<article class="booking-item"><div class="booking-item-main"><div class="booking-item-head"><div><p class="eyebrow">${esc(b.space_name||'Espacio')}</p><h3>${esc(b.customer_name)}</h3></div><span class="status status-${esc(b.booking_status)}">${statusLabels[b.booking_status]||esc(b.booking_status)}</span></div><div class="booking-meta"><span><strong>Fechas</strong>${formatDateLong(b.start_date)} → ${formatDateLong(b.end_date)}</span><span><strong>Días</strong>${esc(b.total_days)}</span><span><strong>Teléfono</strong>${esc(b.customer_phone)}</span><span><strong>Email</strong>${esc(b.customer_email)}</span><span><strong>Limpieza</strong>${b.cleaning_requested?'Sí':'No'}</span></div><div class="booking-financials"><div><span>Alquiler</span><strong>${euro(rental)}</strong></div><div><span>Limpieza</span><strong>${euro(cleaning)}</strong></div><div><span>Fianza</span><strong>${euro(deposit)}</strong></div><div class="booking-financial-total"><span>Total</span><strong>${euro(grand)}</strong></div><p class="micro">Fianza incluida en el total.</p></div></div>${pending?`<div class="booking-actions"><button class="btn btn-dark" data-booking-action="confirm" data-id="${esc(b.id)}">Aceptar</button><button class="btn btn-light" data-booking-action="reject" data-id="${esc(b.id)}">Rechazar</button></div>`:''}</article>`;
 }
 
 function renderOwnerGroup(title,spaces,active){return `<section class="owner-group"><div class="section-head"><div><p class="eyebrow">${active?'ACTIVOS':'HISTÓRICO'}</p><h2>${title}</h2></div></div>${spaces.length?`<div class="owner-grid">${spaces.map(s=>`<article class="owner-space ${active?'':'inactive'}"><div><h3>${esc(s.name)}</h3><p>${esc(s.city||'')} · ${esc(s.province||'')}</p></div><div class="owner-date">${active?`Activo hasta <strong>${formatDateLong(s.active_until)}</strong>`:`Caducado el <strong>${formatDateLong(s.active_until)}</strong>`}</div></article>`).join('')}</div>`:'<p class="muted">No hay locales en esta sección.</p>'}</section>`;}
