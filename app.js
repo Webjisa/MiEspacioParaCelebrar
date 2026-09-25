@@ -111,10 +111,11 @@ async function renderPrivateArea(){
    document.querySelector('#ownerContent').innerHTML='<p class="muted">Área de administración disponible desde el panel.</p>';
    return;
  }
- const {data:owner}=await client.from('owners').select('id').eq('profile_id',user.id).maybeSingle();
- if(!owner){document.querySelector('#ownerContent').innerHTML='<p class="message">No se ha encontrado el perfil de propietario.</p>';return;}
- const {data:spaces,error}=await client.from('spaces').select('id,name,city,province,active,active_from,active_until').eq('owner_id',owner.id).order('name');
- if(error){document.querySelector('#ownerContent').innerHTML='<p class="message">No se han podido cargar tus locales.</p>';return;}
+ const {data:ownerId,error:ownerError}=await client.rpc('get_my_owner_id');
+ if(ownerError){console.error('Error obteniendo propietario:',ownerError);document.querySelector('#ownerContent').innerHTML='<p class="message">No se ha podido identificar el perfil de propietario.</p>';return;}
+ if(!ownerId){document.querySelector('#ownerContent').innerHTML='<p class="message">No se ha encontrado el perfil de propietario.</p>';return;}
+ const {data:spaces,error}=await client.rpc('get_owner_spaces');
+ if(error){console.error('Error cargando locales del propietario:',error);document.querySelector('#ownerContent').innerHTML='<p class="message">No se han podido cargar tus locales.</p>';return;}
  const active=spaces.filter(isActive),inactive=spaces.filter(s=>!isActive(s));
  document.querySelector('#ownerContent').innerHTML=`${renderOwnerGroup('Locales activos',active,true)}${renderOwnerGroup('Locales inactivos',inactive,false)}<section class="owner-bookings"><div class="section-head"><div><p class="eyebrow">RESERVAS</p><h2>Solicitudes de tus locales</h2></div></div><div id="ownerBookings"><p class="muted">Cargando solicitudes…</p></div></section>`;
  await renderOwnerBookings(client);
