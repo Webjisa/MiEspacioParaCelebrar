@@ -47,3 +47,9 @@ Está preparado para ser idempotente en las partes de esquema y funciones: añad
 
 ## Seguridad
 El navegador contiene únicamente la clave pública de Supabase. Las operaciones sensibles se realizan mediante RLS y funciones `security definer`; nunca se debe introducir una `service_role` key en GitHub Pages.
+
+## V26
+- Corrección de navegación del calendario de reservas: las flechas de mes ya no cierran el calendario.
+- Panel de administración basado en las RPC V23 reales.
+- Las coordenadas se pueden localizar mediante dirección, sin almacenar una columna de dirección en `spaces`.
+- Estructura del paquete renombrada a `MiEspacioParaCelebrar-v26`.

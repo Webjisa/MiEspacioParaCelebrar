@@ -1,55 +1,247 @@
-/* MiEspacioParaCelebrar — Administración v23 */
-(async function(){
-const root=document.querySelector('#adminArea'); if(!root)return;
-const client=await getClient(); if(!client){root.innerHTML='<p class="message">No se ha configurado Supabase.</p>';return;}
-const {data:{user}}=await client.auth.getUser();
-if(!user){location.href='acceso.html';return;}
-const {data:profile}=await client.from('profiles').select('role,active,first_name,last_name').eq('id',user.id).maybeSingle();
-if(!profile||profile.role!=='admin'||!profile.active){location.href='area-privada.html';return;}
+/* MiEspacioParaCelebrar · Panel de administración */
+(function(){
+  'use strict';
 
-async function load(){
- root.innerHTML='<div class="admin-panel"><p class="muted">Cargando administración…</p></div>';
- const [spacesRes,ownersRes,bookingsRes,blockedRes]=await Promise.all([
-  client.from('spaces').select('id,owner_id,name,city,province,description,weekday_price,friday_price,saturday_price,sunday_price,opening_time,closing_time,cancellation_policy,cleaning_available,cleaning_price,payment_information,active,active_from,active_until,deposit,address,latitude,longitude').order('name'),
-  client.rpc('admin_list_owners'),client.rpc('admin_get_all_bookings'),client.rpc('admin_list_blocked_dates')
- ]);
- if(spacesRes.error){root.innerHTML='<p class="message">No se han podido cargar los locales: '+esc(spacesRes.error.message)+'</p>';return;}
- const spaces=spacesRes.data||[], owners=ownersRes.data||[], bookings=(bookingsRes.data||[]).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||''))), blocked=blockedRes.error?[]:(blockedRes.data||[]);
- const activeCount=spaces.filter(s=>isActive({active:s.active,activeFrom:s.active_from,activeUntil:s.active_until})).length;
- root.innerHTML=`<div class="admin-panel v23-admin">
- <div class="admin-top"><div><p class="eyebrow">ADMINISTRACIÓN</p><h1>Panel de control</h1><p class="muted">Gestiona espacios, propietarios, reservas, fechas, fotografías y contenido sin entrar en GitHub ni Supabase.</p></div><button id="adminLogout" class="btn btn-light">Cerrar sesión</button></div>
- <div class="admin-kpis"><div><strong>${spaces.length}</strong><span>Espacios</span></div><div><strong>${activeCount}</strong><span>Activos</span></div><div><strong>${bookings.filter(b=>b.booking_status==='pending').length}</strong><span>Pendientes</span></div><div><strong>${bookings.filter(b=>b.booking_status==='confirmed').length}</strong><span>Confirmadas</span></div></div>
- <div class="admin-tabs"><button class="admin-tab active" data-tab="dashboard">Resumen</button><button class="admin-tab" data-tab="spaces">Espacios</button><button class="admin-tab" data-tab="owners">Propietarios</button><button class="admin-tab" data-tab="bookings">Reservas</button><button class="admin-tab" data-tab="blocked">Fechas bloqueadas</button><button class="admin-tab" data-tab="nfc">NFC / Displays</button><button class="admin-tab" data-tab="legal">Legal</button></div>
- <section class="admin-view active" data-view="dashboard"><div class="admin-actions"><button id="newOwner" class="btn btn-dark">+ Nuevo propietario</button><button id="newSpace" class="btn btn-light">+ Nuevo espacio</button><button id="blockDates" class="btn btn-light">+ Bloquear fechas</button></div><div class="admin-two-col"><div class="admin-card"><h2>Próximas reservas</h2>${bookings.filter(b=>b.booking_status==='confirmed'&&b.end_date>=localISODate()).slice(0,6).map(b=>`<div class="admin-list-row"><div><strong>${esc(b.space_name)}</strong><br><span>${esc(b.customer_name)} · ${formatDateLong(b.start_date)}</span></div><span class="status status-confirmed">Confirmada</span></div>`).join('')||'<p class="muted">No hay próximas reservas.</p>'}</div><div class="admin-card"><h2>Espacios</h2>${spaces.map(s=>`<div class="admin-list-row"><div><strong>${esc(s.name)}</strong><br><span>${esc(s.city||'')} · ${s.active?'Activo':'Inactivo'}</span></div><button class="btn btn-light admin-edit" data-id="${esc(s.id)}">Editar</button></div>`).join('')}</div></div></section>
- <section class="admin-view" data-view="spaces"><div class="section-head"><div><p class="eyebrow">ESPACIOS</p><h2>Todos los espacios</h2></div><button id="newSpace2" class="btn btn-dark">+ Nuevo espacio</button></div><div class="admin-space-grid">${spaces.map(s=>renderAdminCard(s,owners)).join('')}</div></section>
- <section class="admin-view" data-view="owners"><div class="section-head"><div><p class="eyebrow">PROPIETARIOS</p><h2>Propietarios registrados</h2></div><button id="newOwner2" class="btn btn-dark">+ Nuevo propietario</button></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Propietario</th><th>Email</th><th>Teléfono</th><th>Espacios</th><th>Estado</th></tr></thead><tbody>${owners.map(o=>{const count=spaces.filter(s=>s.owner_id===o.owner_id).length;return `<tr><td><strong>${esc((o.first_name||'')+' '+(o.last_name||''))}</strong></td><td>${esc(o.email)}</td><td>${esc(o.phone||'—')}</td><td>${count}</td><td>${o.active?'🟢 Activo':'⚪ Inactivo'}</td></tr>`}).join('')||'<tr><td colspan="5" class="muted">No hay propietarios.</td></tr>'}</tbody></table></div></section>
- <section class="admin-view" data-view="bookings"><div class="section-head"><div><p class="eyebrow">RESERVAS</p><h2>Solicitudes y reservas</h2></div></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Espacio</th><th>Cliente</th><th>Fechas</th><th>Estado / acciones</th></tr></thead><tbody>${bookings.map(b=>`<tr><td><strong>${esc(b.space_name)}</strong><br><span class="muted">${esc(b.owner_name||'')}</span></td><td>${esc(b.customer_name)}<br><span class="muted">${esc(b.customer_email)} · ${esc(b.customer_phone)}</span></td><td>${formatDateLong(b.start_date)} → ${formatDateLong(b.end_date)}</td><td><span class="status status-${esc(b.booking_status)}">${esc({pending:'Pendiente',confirmed:'Confirmada',rejected:'Rechazada',expired:'Caducada',cancelled:'Cancelada'}[b.booking_status]||b.booking_status)}</span>${b.booking_status==='pending'?`<div class="admin-booking-actions"><button class="btn btn-dark admin-booking-action" data-action="confirm" data-id="${esc(b.id)}">Aceptar</button><button class="btn btn-light admin-booking-action" data-action="reject" data-id="${esc(b.id)}">Rechazar</button></div>`:''}</td></tr>`).join('')||'<tr><td colspan="4">No hay reservas.</td></tr>'}</tbody></table></div></section>
- <section class="admin-view" data-view="blocked"><div class="section-head"><div><p class="eyebrow">CALENDARIO</p><h2>Fechas bloqueadas</h2><p class="muted">Puedes bloquear periodos por mantenimiento, uso particular o cierre. El sistema impide bloquear fechas con reservas pendientes o confirmadas.</p></div><button id="blockDates2" class="btn btn-dark">+ Bloquear fechas</button></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Espacio</th><th>Periodo</th><th>Motivo</th><th></th></tr></thead><tbody>${blocked.map(b=>`<tr><td>${esc(b.space_name)}</td><td>${formatDateLong(b.start_date)} → ${formatDateLong(b.end_date)}</td><td>${esc(b.reason||'—')}</td><td><button class="btn btn-light unblock-date" data-id="${esc(b.id)}">Desbloquear</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">No hay fechas bloqueadas.</td></tr>'}</tbody></table></div></section>
- <section class="admin-view" data-view="nfc"><div class="section-head"><div><p class="eyebrow">NFC / DISPLAYS</p><h2>Display de sobremesa NFC + QR para cada espacio</h2><p class="muted">Genera el enlace del display físico. Cada espacio puede tener su propia etiqueta NFC y QR, manteniendo el destino independiente del diseño de la web.</p></div></div><div class="admin-space-grid">${spaces.map(s=>nfcCard(s)).join('')}</div><div class="admin-card nfc-info"><strong>Archivos del display</strong><p><a class="btn btn-light" href="display-nfc/display_nfc_base.stl" download>STL base</a> <a class="btn btn-light" href="display-nfc/display_nfc_plate.stl" download>STL placa</a> <a class="btn btn-light" href="display-nfc/display_nfc.scad" download>SCAD editable</a> <a class="btn btn-light" href="display-nfc/tarjeta-display-la-nube.png" target="_blank">Tarjeta de ejemplo</a></p></div><div class="admin-card nfc-info"><strong>Cómo funciona</strong><p>La etiqueta NFC contiene una URL NDEF. Al acercar el teléfono, abre la ficha del espacio y lleva directamente a la reserva. El QR permite hacer lo mismo si el NFC no está disponible. NFC Forum define NDEF para almacenar URI/URL en etiquetas compatibles.</p></div></section>
- <section class="admin-view" data-view="legal"><div class="admin-card"><h2>Textos legales</h2><p>La versión incluye las páginas legales base, pero antes de publicar definitivamente hay que completar la identidad y domicilio del responsable.</p><div class="legal-check"><span>✓ Aviso legal</span><span>✓ Privacidad</span><span>✓ Cookies</span><span>✓ Condiciones</span><span>✓ Información en formulario</span></div><a class="btn btn-light" href="aviso-legal.html">Revisar textos</a></div></section>
- <p id="adminMessage" class="message" aria-live="polite"></p></div>`;
- bind(spaces,owners);
-}
-function completeness(s){const fields=[s.name,s.description,s.city,s.province,s.weekday_price,s.friday_price,s.saturday_price,s.sunday_price,s.opening_time,s.closing_time,s.latitude,s.longitude];return Math.round(fields.filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='').length/fields.length*100);}
-function renderAdminCard(s,owners){const owner=owners.find(o=>o.owner_id===s.owner_id);const active=isActive({active:s.active,activeFrom:s.active_from,activeUntil:s.active_until});return `<article class="admin-space-card"><div class="admin-space-card-head"><div><p class="eyebrow">${active?'ACTIVO':'INACTIVO'}</p><h3>${esc(s.name)}</h3><p>${esc(s.city||'')} · ${esc(s.province||'')}</p></div><span class="status ${active?'status-confirmed':'status-expired'}">${active?'Activo':'Inactivo'}</span></div><div class="admin-space-card-meta"><span>Propietario<strong>${esc(owner?((owner.first_name||'')+' '+(owner.last_name||'')):'Sin asignar')}</strong></span><span>Precio<strong>${euro(s.weekday_price)} – ${euro(Math.max(Number(s.friday_price||0),Number(s.saturday_price||0),Number(s.sunday_price||0)))}</strong></span><span>Vigencia<strong>${s.active_until?formatDateLong(s.active_until):'Sin fecha'}</strong></span><span>Ficha<strong>${completeness(s)} % completa</strong></span></div><div class="admin-card-actions"><button class="btn btn-dark admin-edit" data-id="${esc(s.id)}">Editar espacio</button><a class="btn btn-light" href="espacio.html?id=${encodeURIComponent(s.id)}" target="_blank" rel="noopener">Ver ficha</a></div></article>`;}
-function nfcCard(s){const url=location.origin+location.pathname.replace(/[^/]*$/,'')+'tocar.html?space='+encodeURIComponent(s.id);return `<article class="admin-space-card nfc-card"><p class="eyebrow">DISPLAY NFC</p><h3>${esc(s.name)}</h3><label>URL de la etiqueta NFC<input readonly value="${esc(url)}"></label><div class="nfc-card-actions"><button class="btn btn-dark copy-nfc" data-url="${esc(url)}">Copiar URL</button><a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Probar</a><button class="btn btn-light print-nfc" data-id="${esc(s.id)}">Imprimir instrucciones</button></div></article>`;}
-function bind(spaces,owners){
- document.querySelector('#adminLogout').onclick=async()=>{await client.auth.signOut();location.href='acceso.html';};
- document.querySelectorAll('.admin-tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.admin-tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.admin-view').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelector(`[data-view="${t.dataset.tab}"]`).classList.add('active');});
- ['#newOwner','#newOwner2'].forEach(id=>document.querySelector(id)?.addEventListener('click',()=>openOwnerEditor(client)));
- ['#newSpace','#newSpace2'].forEach(id=>document.querySelector(id)?.addEventListener('click',()=>openSpaceEditor(client,owners)));
- ['#blockDates','#blockDates2'].forEach(id=>document.querySelector(id)?.addEventListener('click',()=>openBlockEditor(spaces)));
- document.querySelectorAll('.admin-edit').forEach(b=>b.onclick=()=>openAdminEditor(b.dataset.id,spaces.find(s=>String(s.id)===b.dataset.id),owners));
- document.querySelectorAll('.unblock-date').forEach(b=>b.onclick=async()=>{if(!confirm('¿Desbloquear este periodo?'))return;const {error}=await client.rpc('admin_unblock_dates',{p_blocked_id:b.dataset.id});if(error){alert(error.message);return;}load();});
- document.querySelectorAll('.admin-booking-action').forEach(b=>b.onclick=async()=>{const action=b.dataset.action;const label=action==='confirm'?'¿Aceptar esta reserva? Las fechas quedarán confirmadas.':'¿Rechazar esta solicitud? Las fechas quedarán libres.';if(!confirm(label))return;b.disabled=true;const rpc=action==='confirm'?'confirm_booking':'reject_booking';const {error}=await client.rpc(rpc,{p_booking_id:b.dataset.id});if(error){alert(error.message);b.disabled=false;return;}load();});
- document.querySelectorAll('.copy-nfc').forEach(b=>b.onclick=async()=>{await navigator.clipboard?.writeText(b.dataset.url);b.textContent='Copiado';setTimeout(()=>b.textContent='Copiar URL',1200);});
- document.querySelectorAll('.print-nfc').forEach(b=>b.onclick=()=>window.print());
-}
-function modal(title,body){const m=document.createElement('div');m.className='modal-backdrop';m.innerHTML=`<div class="modal-card"><div class="section-head"><div><p class="eyebrow">ADMINISTRACIÓN</p><h2>${esc(title)}</h2></div><button class="modal-close btn btn-light">Cerrar</button></div>${body}</div>`;document.body.appendChild(m);m.querySelector('.modal-close').onclick=()=>m.remove();return m;}
-function openOwnerEditor(client){const m=modal('Nuevo propietario',`<div class="admin-form-grid"><label>Nombre<input id="o1" required></label><label>Apellidos<input id="o2" required></label><label>Email<input id="o3" type="email" required></label><label>Contraseña inicial<input id="o4" type="password" minlength="6" required></label><label>Teléfono<input id="o5"></label><label>Dirección<input id="o6"></label><label>Localidad<input id="o7"></label><label>Código postal<input id="o8"></label><label>Nombre fiscal<input id="o9"></label><label>NIF/CIF<input id="o10"></label></div><button id="os" class="btn btn-dark full">Crear propietario</button><p id="om" class="message"></p>`);m.querySelector('#os').onclick=async()=>{const v=id=>m.querySelector(id).value.trim(),msg=m.querySelector('#om');msg.textContent='Creando…';const {data:{session}}=await client.auth.getSession();try{const r=await fetch(`${SUPABASE_URL}/functions/v1/create-owner`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({email:v('#o3'),password:m.querySelector('#o4').value,first_name:v('#o1'),last_name:v('#o2'),phone:v('#o5')||null,address:v('#o6')||null,city:v('#o7')||null,postal_code:v('#o8')||null,legal_name:v('#o9')||null,tax_id:v('#o10')||null})});const data=await r.json();if(!r.ok)throw new Error(data.error||'No se pudo crear el propietario');msg.textContent='Propietario creado.';setTimeout(()=>{m.remove();load();},500);}catch(e){msg.textContent=e.message;}};}
-function openSpaceEditor(client,owners){if(!owners.length){alert('Primero crea un propietario.');return;}const options=owners.filter(o=>o.active).map(o=>`<option value="${esc(o.owner_id)}">${esc((o.first_name||'')+' '+(o.last_name||'')+' · '+o.email)}</option>`).join('');const m=modal('Nuevo espacio',`<div class="admin-form-grid"><label>Propietario<select id="nsOwner">${options}</select></label><label>Nombre<input id="nsName" required></label><label>Localidad<input id="nsCity" value="Lucena"></label><label>Provincia<input id="nsProv" value="Córdoba"></label><label>Precio lunes–jueves<input id="nsW" type="number"></label><label>Precio viernes<input id="nsF" type="number"></label><label>Precio sábado<input id="nsS" type="number"></label><label>Precio domingo<input id="nsSu" type="number"></label><label>Fianza<input id="nsD" type="number"></label><label>Inicio<input id="nsFrom" type="date"></label><label>Fin<input id="nsUntil" type="date"></label><label>Dirección<input id="nsAddr"></label><label>Latitud<input id="nsLat" type="number" step="0.000001"></label><label>Longitud<input id="nsLng" type="number" step="0.000001"></label><label>Descripción<textarea id="nsDesc"></textarea></label></div><button id="nsLocate" class="btn btn-light">Ubicar dirección</button><button id="nsSave" class="btn btn-dark full">Crear espacio</button><p id="nsMsg" class="message"></p>`);m.querySelector('#nsLocate').onclick=async()=>{const a=m.querySelector('#nsAddr').value.trim(),msg=m.querySelector('#nsMsg');if(!a){msg.textContent='Introduce una dirección.';return;}msg.textContent='Buscando…';const f=await geocodeSpace({address:a,city:m.querySelector('#nsCity').value,province:m.querySelector('#nsProv').value});m.querySelector('#nsLat').value=Number(f.latitude).toFixed(6);m.querySelector('#nsLng').value=Number(f.longitude).toFixed(6);msg.textContent=Number.isFinite(Number(f.latitude))?'Ubicación encontrada.':'No se encontró la dirección.';};m.querySelector('#nsSave').onclick=async()=>{const v=id=>m.querySelector(id).value.trim(),n=id=>v(id)===''?null:Number(v(id));const {error}=await client.rpc('admin_create_space',{p_owner_id:v('#nsOwner'),p_name:v('#nsName'),p_city:v('#nsCity'),p_province:v('#nsProv'),p_description:v('#nsDesc')||null,p_weekday_price:n('#nsW'),p_friday_price:n('#nsF'),p_saturday_price:n('#nsS'),p_sunday_price:n('#nsSu'),p_deposit:n('#nsD'),p_address:v('#nsAddr')||null,p_latitude:n('#nsLat'),p_longitude:n('#nsLng'),p_active:true,p_active_from:v('#nsFrom')||null,p_active_until:v('#nsUntil')||null});if(error){m.querySelector('#nsMsg').textContent=error.message;return;}m.remove();load();};}
-function storagePathFromPublicUrl(url){try{const u=new URL(url);const marker='/storage/v1/object/public/space-images/';const i=u.pathname.indexOf(marker);return i>=0?decodeURIComponent(u.pathname.slice(i+marker.length)):null;}catch(e){return null;}}
-async function openAdminEditor(id,s,owners){const [fRes,iRes]=await Promise.all([client.from('space_features').select('feature').eq('space_id',id).order('sort_order'),client.from('space_images').select('id,image_url,sort_order').eq('space_id',id).order('sort_order')]);const features=(fRes.data||[]).map(x=>x.feature).filter(Boolean);const images=(iRes.data||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));const opts=owners.filter(o=>o.active).map(o=>`<option value="${esc(o.owner_id)}" ${o.owner_id===s.owner_id?'selected':''}>${esc((o.first_name||'')+' '+(o.last_name||'')+' · '+o.email)}</option>`).join('');const m=modal('Editar '+s.name,`<div class="admin-form-grid"><label>Propietario<select id="eOwner">${opts}</select></label><label>Nombre<input id="eName" value="${esc(s.name)}"></label><label>Localidad<input id="eCity" value="${esc(s.city||'')}"></label><label>Provincia<input id="eProv" value="${esc(s.province||'')}"></label><label>Activo<input id="eActive" type="checkbox" ${s.active?'checked':''}></label><label>Inicio<input id="eFrom" type="date" value="${esc(s.active_from||'')}"></label><label>Fin<input id="eUntil" type="date" value="${esc(s.active_until||'')}"></label><label>Precio lunes–jueves<input id="eW" type="number" value="${s.weekday_price??''}"></label><label>Precio viernes<input id="eF" type="number" value="${s.friday_price??''}"></label><label>Precio sábado<input id="eS" type="number" value="${s.saturday_price??''}"></label><label>Precio domingo<input id="eSu" type="number" value="${s.sunday_price??''}"></label><label>Fianza<input id="eD" type="number" value="${s.deposit??''}"></label><label>Horario apertura<input id="eOpen" type="time" value="${String(s.opening_time||'').slice(0,5)}"></label><label>Horario cierre<input id="eClose" type="time" value="${String(s.closing_time||'').slice(0,5)}"></label><label>Dirección<input id="eAddr" value="${esc(s.address||'')}"></label><label>Latitud<input id="eLat" type="number" step="0.000001" value="${s.latitude??''}"></label><label>Longitud<input id="eLng" type="number" step="0.000001" value="${s.longitude??''}"></label><label>Descripción<textarea id="eDesc">${esc(s.description||'')}</textarea></label><label>Condiciones<textarea id="eCancel">${esc(s.cancellation_policy||'')}</textarea></label><label>Información de pago<textarea id="ePay">${esc(s.payment_information||'')}</textarea></label><label class="admin-check">Limpieza disponible<input id="eClean" type="checkbox" ${s.cleaning_available?'checked':''}></label><label>Precio limpieza<input id="eCleanPrice" type="number" value="${s.cleaning_price??0}"></label><label>Características<textarea id="eFeatures" placeholder="Una por línea">${esc(features.join('\n'))}</textarea></label></div><button id="eLocate" class="btn btn-light">Ubicar dirección</button><div class="admin-upload"><h3>Fotografías</h3><div class="admin-gallery">${images.map(i=>`<div><img src="${esc(i.image_url)}"><button type="button" class="remove-img btn btn-light" data-url="${esc(i.image_url)}">Quitar</button></div>`).join('')||'<p class="muted">Sin fotografías.</p>'}</div><input id="eFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple></div><button id="eSave" class="btn btn-dark full">Guardar todos los cambios</button><p id="eMsg" class="message"></p>`);m.querySelector('#eLocate').onclick=async()=>{const f=await geocodeSpace({address:m.querySelector('#eAddr').value,city:s.city,province:s.province});m.querySelector('#eLat').value=Number(f.latitude).toFixed(6);m.querySelector('#eLng').value=Number(f.longitude).toFixed(6);m.querySelector('#eMsg').textContent='Ubicación actualizada.';};m.querySelector('#eSave').onclick=async()=>{const msg=m.querySelector('#eMsg'),v=id=>m.querySelector(id).value.trim(),n=id=>v(id)===''?null:Number(v(id));msg.textContent='Guardando…';let urls=images.map(x=>x.image_url);const files=[...m.querySelector('#eFiles').files];for(const file of files){const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');const path=`${id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${safe}`;const up=await client.storage.from('space-images').upload(path,file,{upsert:false,contentType:file.type});if(up.error){msg.textContent='No se pudo subir '+file.name+': '+up.error.message;return;}urls.push(client.storage.from('space-images').getPublicUrl(path).data.publicUrl);}const rpc=await client.rpc('admin_update_space_full',{p_space_id:id,p_owner_id:v('#eOwner'),p_active:m.querySelector('#eActive').checked,p_active_from:v('#eFrom')||null,p_active_until:v('#eUntil')||null,p_name:v('#eName'),p_city:v('#eCity')||null,p_province:v('#eProv')||null,p_description:v('#eDesc')||null,p_weekday_price:n('#eW'),p_friday_price:n('#eF'),p_saturday_price:n('#eS'),p_sunday_price:n('#eSu'),p_deposit:n('#eD'),p_opening_time:v('#eOpen')||null,p_closing_time:v('#eClose')||null,p_cleaning_available:m.querySelector('#eClean').checked,p_cleaning_price:n('#eCleanPrice')??0,p_cancellation_policy:v('#eCancel')||null,p_payment_information:v('#ePay')||null,p_address:v('#eAddr')||null,p_latitude:n('#eLat'),p_longitude:n('#eLng')});if(rpc.error){msg.textContent=rpc.error.message;return;}const fr=await client.rpc('admin_replace_space_features',{p_space_id:id,p_features:v('#eFeatures').split('\n').map(x=>x.trim()).filter(Boolean)});if(fr.error){msg.textContent=fr.error.message;return;}const ir=await client.rpc('admin_replace_space_images',{p_space_id:id,p_images:urls});if(ir.error){msg.textContent=ir.error.message;return;}msg.textContent='Guardado correctamente.';setTimeout(()=>{m.remove();load();},500);};m.querySelectorAll('.remove-img').forEach(b=>b.onclick=async()=>{const row=b.parentElement;const item=images.find(x=>x.image_url===b.dataset.url);if(!item)return;if(!confirm('¿Eliminar esta fotografía?'))return;b.disabled=true;const rr=await client.rpc('admin_remove_space_image',{p_image_id:item.id});if(rr.error){m.querySelector('#eMsg').textContent=rr.error.message;b.disabled=false;return;}const path=storagePathFromPublicUrl(item.image_url);if(path){const dr=await client.storage.from('space-images').remove([path]);if(dr.error){m.querySelector('#eMsg').textContent='La fotografía se quitó de la galería, pero no del almacenamiento: '+dr.error.message;}}row.remove();images.splice(images.findIndex(x=>x.id===item.id),1);});}
-function openBlockEditor(spaces){const options=spaces.filter(s=>s.active).map(s=>`<option value="${esc(s.id)}">${esc(s.name)} · ${esc(s.city||'')}</option>`).join('');const m=modal('Bloquear fechas',`<div class="admin-form-grid"><label>Espacio<select id="bSpace">${options}</select></label><label>Desde<input id="bFrom" type="date"></label><label>Hasta<input id="bUntil" type="date"></label><label>Motivo<input id="bReason" placeholder="Mantenimiento, uso particular…"></label></div><button id="bSave" class="btn btn-dark full">Bloquear periodo</button><p id="bMsg" class="message"></p>`);m.querySelector('#bSave').onclick=async()=>{const {error}=await client.rpc('admin_block_dates',{p_space_id:m.querySelector('#bSpace').value,p_start_date:m.querySelector('#bFrom').value,p_end_date:m.querySelector('#bUntil').value,p_reason:m.querySelector('#bReason').value.trim()||null});if(error){m.querySelector('#bMsg').textContent=error.message;return;}m.remove();load();};}
-load();
+  const state = { client:null, spaces:[], owners:[], bookings:[], selectedSpace:null };
+  const money = n => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(n||0));
+  const date = d => d ? new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(`${d}T12:00:00`)) : '—';
+  const esc = v => String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const val = (root,id) => root.querySelector(id)?.value?.trim() || '';
+  const num = (root,id) => val(root,id)==='' ? null : Number(val(root,id));
+  const toast = (root,msg,error=false) => { const el=root.querySelector('.admin-message'); if(el){el.textContent=msg;el.classList.toggle('error',error);} };
+
+  async function client(){
+    if(state.client) return state.client;
+    if(!window.supabase || !window.MIESPACIO_SUPABASE_ANON_KEY) return null;
+    state.client=window.supabase.createClient('https://hvuseljtqdgekotrsiwd.supabase.co',window.MIESPACIO_SUPABASE_ANON_KEY);
+    return state.client;
+  }
+
+  async function requireAdmin(){
+    const c=await client(); if(!c) throw new Error('No se ha podido conectar con Supabase.');
+    const {data:{user},error}=await c.auth.getUser(); if(error) throw error;
+    if(!user){location.href='acceso.html';return null;}
+    const {data:profile,error:pe}=await c.from('profiles').select('id,email,first_name,last_name,role,active').eq('id',user.id).maybeSingle();
+    if(pe) throw pe;
+    if(!profile || profile.role!=='admin' || profile.active!==true){location.href='area-privada.html';return null;}
+    return c;
+  }
+
+  async function loadAll(c){
+    const [sp,ow,bk]=await Promise.all([
+      c.rpc('admin_get_spaces'),
+      c.rpc('admin_get_owners'),
+      c.rpc('admin_get_bookings')
+    ]);
+    if(sp.error) throw sp.error; if(ow.error) throw ow.error; if(bk.error) throw bk.error;
+    state.spaces=sp.data||[]; state.owners=ow.data||[]; state.bookings=bk.data||[];
+  }
+
+  function shell(){
+    const root=document.querySelector('#adminArea');
+    root.innerHTML=`<div class="admin-shell">
+      <aside class="admin-sidebar">
+        <div class="admin-sidebar-brand"><img src="assets/logo-miespacio-v12.png" alt="MiEspacioParaCelebrar"><span>Administración</span></div>
+        <nav class="admin-side-nav">
+          <button data-view="dashboard" class="active">Inicio</button>
+          <button data-view="spaces">Espacios</button>
+          <button data-view="owners">Propietarios</button>
+          <button data-view="bookings">Reservas</button>
+          <button data-view="calendar">Calendario</button>
+        </nav>
+        <button id="adminLogout" class="admin-logout">Cerrar sesión</button>
+      </aside>
+      <section class="admin-main">
+        <div class="admin-mobile-top"><button id="adminMenu" aria-label="Abrir menú">☰</button><strong>Administración</strong></div>
+        <div id="adminView"></div>
+      </section>
+    </div>`;
+    root.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{root.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderView(b.dataset.view);}));
+    root.querySelector('#adminLogout').onclick=async()=>{await state.client.auth.signOut();location.href='acceso.html';};
+    root.querySelector('#adminMenu').onclick=()=>root.querySelector('.admin-sidebar').classList.toggle('open');
+  }
+
+  function renderView(view){
+    const root=document.querySelector('#adminView'); if(!root)return;
+    document.querySelector('.admin-sidebar')?.classList.remove('open');
+    if(view==='spaces') return renderSpaces(root);
+    if(view==='owners') return renderOwners(root);
+    if(view==='bookings') return renderBookings(root);
+    if(view==='calendar') return renderCalendar(root);
+    renderDashboard(root);
+  }
+
+  function header(kicker,title,action=''){
+    return `<div class="admin-view-head"><div><p class="eyebrow">${kicker}</p><h1>${title}</h1></div>${action}</div>`;
+  }
+
+  function renderDashboard(root){
+    const active=state.spaces.filter(s=>s.active).length;
+    const pending=state.bookings.filter(b=>b.booking_status==='pending').length;
+    const confirmed=state.bookings.filter(b=>b.booking_status==='confirmed').length;
+    const owners=state.owners.filter(o=>o.active).length;
+    const upcoming=state.bookings.filter(b=>b.booking_status==='confirmed' && b.end_date>=new Date().toISOString().slice(0,10)).sort((a,b)=>String(a.start_date).localeCompare(String(b.start_date))).slice(0,5);
+    root.innerHTML=header('ADMINISTRACIÓN','Resumen')+`<div class="admin-kpis">
+      <article><span>Espacios activos</span><strong>${active}</strong></article>
+      <article><span>Propietarios activos</span><strong>${owners}</strong></article>
+      <article><span>Solicitudes pendientes</span><strong>${pending}</strong></article>
+      <article><span>Reservas confirmadas</span><strong>${confirmed}</strong></article>
+    </div>
+    <div class="admin-dashboard-grid">
+      <section class="admin-card"><div class="admin-card-head"><div><p class="eyebrow">ATENCIÓN</p><h2>Solicitudes pendientes</h2></div><button class="btn btn-light" data-go="bookings">Ver reservas</button></div>
+        ${pending?`<div class="admin-list">${state.bookings.filter(b=>b.booking_status==='pending').slice(0,6).map(b=>`<div class="admin-list-row"><div><strong>${esc(b.space_name)}</strong><span>${esc(b.customer_name)} · ${date(b.start_date)} → ${date(b.end_date)}</span></div><span class="status status-pending">Pendiente</span></div>`).join('')}</div>`:'<p class="muted">No hay solicitudes pendientes.</p>'}
+      </section>
+      <section class="admin-card"><div class="admin-card-head"><div><p class="eyebrow">PRÓXIMOS EVENTOS</p><h2>Reservas confirmadas</h2></div></div>
+        ${upcoming.length?`<div class="admin-list">${upcoming.map(b=>`<div class="admin-list-row"><div><strong>${esc(b.space_name)}</strong><span>${esc(b.customer_name)} · ${date(b.start_date)} → ${date(b.end_date)}</span></div><span class="status status-confirmed">Confirmada</span></div>`).join('')}</div>`:'<p class="muted">No hay próximas reservas.</p>'}
+      </section>
+    </div>`;
+    root.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>root.querySelector(`[data-view="${b.dataset.go}"]`)?.click());
+  }
+
+  function renderSpaces(root){
+    root.innerHTML=header('ESPACIOS','Gestionar espacios',`<button id="newSpace" class="btn btn-dark">+ Añadir espacio</button>`)+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Espacio</th><th>Propietario</th><th>Estado</th><th>Periodo</th><th>Precios</th><th></th></tr></thead><tbody>${state.spaces.length?state.spaces.map(s=>spaceRow(s)).join(''):`<tr><td colspan="6" class="muted">No hay espacios.</td></tr>`}</tbody></table></div></div><p class="admin-message" aria-live="polite"></p>`;
+    root.querySelector('#newSpace').onclick=()=>spaceModal(null);
+    root.querySelectorAll('[data-space-edit]').forEach(b=>b.onclick=()=>spaceModal(state.spaces.find(s=>s.id===b.dataset.spaceEdit)));
+    root.querySelectorAll('[data-space-toggle]').forEach(b=>b.onclick=()=>toggleSpace(b.dataset.spaceToggle,b.dataset.active==='true'));
+    root.querySelectorAll('[data-space-tools]').forEach(b=>b.onclick=()=>spaceTools(state.spaces.find(s=>s.id===b.dataset.spaceTools)));
+  }
+
+  function spaceRow(s){
+    const owner=state.owners.find(o=>o.id===s.owner_id);
+    const period=s.active_until?`${date(s.active_from)} → ${date(s.active_until)}`:`Desde ${date(s.active_from)}`;
+    return `<tr><td><strong>${esc(s.name)}</strong><span class="table-sub">${esc(s.city||'')} · ${esc(s.province||'')}</span></td><td>${owner?esc(`${owner.first_name||''} ${owner.last_name||''}`.trim()||owner.email):'—'}</td><td><span class="status ${s.active?'status-confirmed':'status-off'}">${s.active?'Activo':'Inactivo'}</span></td><td>${period}</td><td>${money(s.weekday_price)} / ${money(s.friday_price)}</td><td class="table-actions"><button class="btn btn-light" data-space-edit="${s.id}">Editar</button><button class="btn btn-light" data-space-tools="${s.id}">Gestionar</button><button class="btn btn-light" data-space-toggle="${s.id}" data-active="${s.active}">${s.active?'Desactivar':'Activar'}</button></td></tr>`;
+  }
+
+  async function spaceModal(s){
+    const c=state.client, edit=!!s;
+    const activeOwners=state.owners.filter(o=>o.active);
+    const ownerOptions=activeOwners.map(o=>`<option value="${o.id}" ${s?.owner_id===o.id?'selected':''}>${esc(`${o.first_name||''} ${o.last_name||''}`.trim()||o.email)}</option>`).join('');
+    const m=modal('Editar espacio',`<form id="spaceForm" class="admin-form-grid">
+      <label>Propietario<select id="owner" required>${ownerOptions||'<option value="">No hay propietarios activos</option>'}</select></label>
+      <label>Nombre<input id="name" required value="${esc(s?.name||'')}"></label>
+      <label>Localidad<input id="city" value="${esc(s?.city||'')}"></label>
+      <label>Provincia<input id="province" value="${esc(s?.province||'')}"></label>
+      <label>Precio lunes–jueves (€)<input id="weekday" type="number" min="0" step="0.01" value="${s?.weekday_price??''}"></label>
+      <label>Precio viernes (€)<input id="friday" type="number" min="0" step="0.01" value="${s?.friday_price??''}"></label>
+      <label>Precio sábado (€)<input id="saturday" type="number" min="0" step="0.01" value="${s?.saturday_price??''}"></label>
+      <label>Precio domingo (€)<input id="sunday" type="number" min="0" step="0.01" value="${s?.sunday_price??''}"></label>
+      <label>Hora de apertura<input id="opening" type="time" value="${esc(s?.opening_time||'11:00')}"></label>
+      <label>Hora de cierre<input id="closing" type="time" value="${esc(s?.closing_time||'23:00')}"></label>
+      <label>Fianza (€)<input id="deposit" type="number" min="0" step="0.01" value="${s?.deposit??''}"></label>
+      <label>Inicio de actividad<input id="from" type="date" value="${esc(s?.active_from||'')}"></label>
+      <label>Fin de actividad<input id="until" type="date" value="${esc(s?.active_until||'')}"></label>
+      <label>Latitud<input id="lat" type="number" step="0.000001" value="${s?.latitude??''}"></label>
+      <label>Longitud<input id="lng" type="number" step="0.000001" value="${s?.longitude??''}"></label>
+      <label class="form-wide">Descripción<textarea id="description">${esc(s?.description||'')}</textarea></label>
+      <label class="form-wide">Condiciones de cancelación<textarea id="cancel">${esc(s?.cancellation_policy||'')}</textarea></label>
+      <label class="form-wide">Información de pago<textarea id="payment">${esc(s?.payment_information||'')}</textarea></label>
+      <label class="check-row"><input id="cleaningAvailable" type="checkbox" ${s?.cleaning_available?'checked':''}> Ofrecer limpieza</label>
+      <label>Precio limpieza (€)<input id="cleaningPrice" type="number" min="0" step="0.01" value="${s?.cleaning_price??''}"></label>
+      <label class="check-row"><input id="active" type="checkbox" ${s?.active!==false?'checked':''}> Espacio activo</label>
+    </form><div class="modal-actions"><button id="saveSpace" class="btn btn-dark">${edit?'Guardar cambios':'Crear espacio'}</button><button class="btn btn-light" data-close>Cerrar</button></div><p class="admin-message" aria-live="polite"></p>`);
+    m.querySelector('[data-close]').onclick=()=>m.remove();
+    m.querySelector('#saveSpace').onclick=async()=>{
+      const msg=m.querySelector('.admin-message'); msg.textContent='Guardando…';
+      const args={p_owner_id:val(m,'#owner'),p_name:val(m,'#name'),p_city:val(m,'#city')||null,p_province:val(m,'#province')||null,p_description:val(m,'#description')||null,p_weekday_price:num(m,'#weekday')??0,p_friday_price:num(m,'#friday')??0,p_saturday_price:num(m,'#saturday')??0,p_sunday_price:num(m,'#sunday')??0,p_opening_time:val(m,'#opening')||'11:00',p_closing_time:val(m,'#closing')||'23:00',p_cancellation_policy:val(m,'#cancel')||null,p_cleaning_available:m.querySelector('#cleaningAvailable').checked,p_cleaning_price:num(m,'#cleaningPrice')??0,p_payment_information:val(m,'#payment')||null,p_active:m.querySelector('#active').checked,p_latitude:num(m,'#lat'),p_longitude:num(m,'#lng'),p_deposit:num(m,'#deposit')??0,p_active_from:val(m,'#from')||null,p_active_until:val(m,'#until')||null};
+      const r=edit?await c.rpc('admin_update_space',{p_space_id:s.id,...args}):await c.rpc('admin_create_space',args);
+      if(r.error){msg.textContent=r.error.message;msg.classList.add('error');return;} m.remove();await refresh();renderView('spaces');
+    };
+  }
+
+  function modal(title,body){
+    const m=document.createElement('div');m.className='modal-backdrop';m.innerHTML=`<div class="modal-card admin-modal"><div class="modal-title"><div><p class="eyebrow">MiEspacioParaCelebrar</p><h2>${title}</h2></div><button class="modal-x" aria-label="Cerrar">×</button></div>${body}</div>`;document.body.appendChild(m);m.querySelector('.modal-x').onclick=()=>m.remove();m.addEventListener('click',e=>{if(e.target===m)m.remove();});return m;
+  }
+
+  async function toggleSpace(id,active){
+    const r=await state.client.rpc('admin_set_space_active',{p_space_id:id,p_active:!active}); if(r.error){alert(r.error.message);return;} await refresh();renderView('spaces');
+  }
+
+  async function spaceTools(s){
+    const m=modal(`Gestionar · ${esc(s.name)}`,`<div class="tool-tabs"><button class="active" data-tool="photos">Fotos</button><button data-tool="features">Características</button><button data-tool="blocks">Bloqueos</button></div><div id="toolContent"></div>`);
+    m.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{m.querySelectorAll('[data-tool]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTool(m,s,b.dataset.tool);});
+    renderTool(m,s,'photos');
+  }
+
+  async function renderTool(m,s,tool){
+    const box=m.querySelector('#toolContent');box.innerHTML='<p class="muted">Cargando…</p>';
+    if(tool==='photos') return photosTool(m,s,box);
+    if(tool==='features') return featuresTool(m,s,box);
+    return blocksTool(m,s,box);
+  }
+
+  async function photosTool(m,s,box){
+    const r=await state.client.rpc('admin_get_space_images',{p_space_id:s.id}); if(r.error){box.innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}
+    box.innerHTML=`<div class="upload-box"><input id="photoFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple><p>JPG, PNG o WebP. Puedes seleccionar varias imágenes.</p><button id="uploadPhotos" class="btn btn-dark">Subir fotografías</button></div><div class="photo-grid">${(r.data||[]).map((x,i)=>`<article class="photo-admin"><img src="${esc(x.image_url)}" alt="${esc(x.alt_text||s.name)}"><div><strong>${x.is_main?'Principal':'Fotografía '+(i+1)}</strong><p>${esc(x.alt_text||'Sin texto alternativo')}</p><div class="photo-actions">${!x.is_main?`<button class="btn btn-light" data-main="${x.id}">Hacer principal</button>`:''}<button class="btn btn-light" data-photo-edit="${x.id}">Editar</button><button class="btn btn-light" data-photo-delete="${x.id}" data-url="${esc(x.image_url)}">Eliminar</button></div></div></article>`).join('')||'<p class="muted">Todavía no hay fotografías.</p>'}</div><p class="admin-message"></p>`;
+    box.querySelector('#uploadPhotos').onclick=async()=>{
+      const files=[...box.querySelector('#photoFiles').files];if(!files.length){toast(box,'Selecciona al menos una imagen.',true);return;} const msg=box.querySelector('.admin-message');msg.textContent='Subiendo…';
+      for(const file of files){if(file.size>8*1024*1024){msg.textContent=`${file.name}: supera 8 MB.`;msg.classList.add('error');continue;} const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');const path=`${s.id}/${crypto.randomUUID()}.${ext}`;const up=await state.client.storage.from('space-images').upload(path,file,{cacheControl:'31536000',upsert:false,contentType:file.type});if(up.error){msg.textContent=up.error.message;msg.classList.add('error');continue;}const pub=state.client.storage.from('space-images').getPublicUrl(path).data.publicUrl;const row=await state.client.rpc('admin_add_space_image',{p_space_id:s.id,p_image_url:pub,p_alt_text:s.name,p_is_main:false,p_sort_order:999});if(row.error){await state.client.storage.from('space-images').remove([path]);msg.textContent=row.error.message;msg.classList.add('error');break;}}
+      msg.textContent='Fotografías procesadas.';await renderTool(m,s,'photos');
+    };
+    box.querySelectorAll('[data-main]').forEach(b=>b.onclick=async()=>{const img=(r.data||[]).find(x=>x.id===b.dataset.main);if(!img)return;const u=await state.client.rpc('admin_update_space_image',{p_image_id:img.id,p_image_url:img.image_url,p_alt_text:img.alt_text||s.name,p_is_main:true,p_sort_order:img.sort_order||0});if(u.error){alert(u.error.message);return;}await renderTool(m,s,'photos');});
+    box.querySelectorAll('[data-photo-edit]').forEach(b=>b.onclick=()=>editPhoto(m,s,(r.data||[]).find(x=>x.id===b.dataset.photoEdit)));
+    box.querySelectorAll('[data-photo-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('¿Eliminar esta fotografía?'))return;const del=await state.client.rpc('admin_delete_space_image',{p_image_id:b.dataset.photoDelete});if(del.error){alert(del.error.message);return;}await removeStorageUrl(b.dataset.url);await renderTool(m,s,'photos');});
+  }
+
+  async function removeStorageUrl(url){try{const marker='/storage/v1/object/public/space-images/';const i=url.indexOf(marker);if(i<0)return;const path=decodeURIComponent(url.slice(i+marker.length));await state.client.storage.from('space-images').remove([path]);}catch(e){console.warn(e);}}
+
+  function editPhoto(m,s,img){
+    const box=m.querySelector('#toolContent');box.innerHTML=`<div class="photo-edit-form"><img src="${esc(img.image_url)}" alt=""><label>Texto alternativo<input id="photoAlt" value="${esc(img.alt_text||'')}"></label><label>Orden<input id="photoOrder" type="number" value="${img.sort_order??0}"></label><label class="check-row"><input id="photoMain" type="checkbox" ${img.is_main?'checked':''}> Fotografía principal</label><button id="savePhoto" class="btn btn-dark">Guardar</button><button id="backPhotos" class="btn btn-light">Volver</button><p class="admin-message"></p></div>`;
+    box.querySelector('#savePhoto').onclick=async()=>{const r=await state.client.rpc('admin_update_space_image',{p_image_id:img.id,p_image_url:img.image_url,p_alt_text:val(box,'#photoAlt')||s.name,p_is_main:box.querySelector('#photoMain').checked,p_sort_order:Number(val(box,'#photoOrder')||0)});if(r.error){toast(box,r.error.message,true);return;}await renderTool(m,s,'photos');};box.querySelector('#backPhotos').onclick=()=>renderTool(m,s,'photos');
+  }
+
+  async function featuresTool(m,s,box){
+    const r=await state.client.rpc('admin_get_space_features',{p_space_id:s.id});if(r.error){box.innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}
+    box.innerHTML=`<div class="feature-add"><input id="newFeature" placeholder="Nueva característica"><button id="addFeature" class="btn btn-dark">Añadir</button></div><div class="feature-admin-list">${(r.data||[]).map((x,i)=>`<div><span>${esc(x.feature)}</span><span><button class="btn btn-light" data-feature-edit="${x.id}">Editar</button><button class="btn btn-light" data-feature-delete="${x.id}">Eliminar</button></span></div>`).join('')||'<p class="muted">No hay características.</p>'}</div><p class="admin-message"></p>`;
+    box.querySelector('#addFeature').onclick=async()=>{const feature=val(box,'#newFeature');if(!feature)return;const q=await state.client.rpc('admin_add_space_feature',{p_space_id:s.id,p_feature:feature,p_sort_order:(r.data||[]).length});if(q.error){toast(box,q.error.message,true);return;}await renderTool(m,s,'features');};
+    box.querySelectorAll('[data-feature-delete]').forEach(b=>b.onclick=async()=>{if(!confirm('¿Eliminar esta característica?'))return;const q=await state.client.rpc('admin_delete_space_feature',{p_feature_id:b.dataset.featureDelete});if(q.error){alert(q.error.message);return;}await renderTool(m,s,'features');});
+    box.querySelectorAll('[data-feature-edit]').forEach(b=>b.onclick=()=>{const x=(r.data||[]).find(y=>y.id===b.dataset.featureEdit);const n=prompt('Característica',x.feature);if(n===null)return;state.client.rpc('admin_update_space_feature',{p_feature_id:x.id,p_feature:n.trim(),p_sort_order:x.sort_order}).then(q=>q.error?alert(q.error.message):renderTool(m,s,'features'));});
+  }
+
+  async function blocksTool(m,s,box){
+    const r=await state.client.rpc('admin_get_blocked_dates',{p_space_id:s.id});if(r.error){box.innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}
+    box.innerHTML=`<form class="block-form"><label>Desde<input id="blockFrom" type="date" required></label><label>Hasta<input id="blockUntil" type="date" required></label><label>Motivo<input id="blockReason" placeholder="Uso particular, mantenimiento…"></label><button id="addBlock" class="btn btn-dark">Bloquear fechas</button></form><div class="block-list">${(r.data||[]).map(x=>`<div><div><strong>${date(x.start_date)} → ${date(x.end_date)}</strong><span>${esc(x.reason||'Sin motivo')}</span></div><button class="btn btn-light" data-block-delete="${x.id}">Eliminar</button></div>`).join('')||'<p class="muted">No hay fechas bloqueadas.</p>'}</div><p class="admin-message"></p>`;
+    box.querySelector('#addBlock').onclick=async e=>{e.preventDefault();const from=val(box,'#blockFrom'),until=val(box,'#blockUntil');if(!from||!until||until<from){toast(box,'El rango de fechas no es válido.',true);return;}const q=await state.client.rpc('admin_create_blocked_date',{p_space_id:s.id,p_start_date:from,p_end_date:until,p_reason:val(box,'#blockReason')||null});if(q.error){toast(box,q.error.message,true);return;}await renderTool(m,s,'blocks');};
+    box.querySelectorAll('[data-block-delete]').forEach(b=>b.onclick=async()=>{const q=await state.client.rpc('admin_delete_blocked_date',{p_blocked_id:b.dataset.blockDelete});if(q.error){alert(q.error.message);return;}await renderTool(m,s,'blocks');});
+  }
+
+  function renderOwners(root){
+    root.innerHTML=header('PROPIETARIOS','Propietarios',`<button id="newOwner" class="btn btn-dark">+ Añadir propietario</button>`)+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Propietario</th><th>Email</th><th>Teléfono</th><th>Espacios</th><th>Estado</th><th></th></tr></thead><tbody>${state.owners.length?state.owners.map(o=>`<tr><td><strong>${esc(`${o.first_name||''} ${o.last_name||''}`.trim()||'Sin nombre')}</strong><span class="table-sub">${esc(o.legal_name||'')}</span></td><td>${esc(o.email||'')}</td><td>${esc(o.phone||'—')}</td><td>${state.spaces.filter(s=>s.owner_id===o.id).length}</td><td><span class="status ${o.active?'status-confirmed':'status-off'}">${o.active?'Activo':'Inactivo'}</span></td><td><button class="btn btn-light" data-owner-edit="${o.profile_id}">Editar</button> <button class="btn btn-light" data-owner-toggle="${o.id}" data-active="${o.active}">${o.active?'Desactivar':'Activar'}</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">No hay propietarios.</td></tr>'}</tbody></table></div></div><p class="admin-message"></p>`;
+    root.querySelector('#newOwner').onclick=()=>ownerModal(null);
+    root.querySelectorAll('[data-owner-edit]').forEach(b=>b.onclick=()=>ownerModal(state.owners.find(o=>o.profile_id===b.dataset.ownerEdit)));
+    root.querySelectorAll('[data-owner-toggle]').forEach(b=>b.onclick=async()=>{const q=await state.client.rpc('admin_set_owner_active',{p_owner_id:b.dataset.ownerToggle,p_active:b.dataset.active!=='true'});if(q.error){alert(q.error.message);return;}await refresh();renderView('owners');});
+  }
+
+  function ownerModal(o){
+    if(!o){
+      const m=modal('Nuevo propietario',`<form id="ownerForm" class="admin-form-grid"><label>Nombre<input id="first" required></label><label>Apellidos<input id="last" required></label><label>Email<input id="email" type="email" required></label><label>Contraseña inicial<input id="password" type="password" minlength="6" required></label><label>Teléfono<input id="phone"></label><label>Dirección<input id="address"></label><label>Localidad<input id="city"></label><label>Código postal<input id="postal"></label><label>Nombre fiscal<input id="legal"></label><label>NIF/CIF<input id="tax"></label></form><div class="modal-actions"><button id="createOwner" class="btn btn-dark">Crear propietario</button><button class="btn btn-light" data-close>Cerrar</button></div><p class="admin-message"></p>`);
+      m.querySelector('[data-close]').onclick=()=>m.remove();m.querySelector('#createOwner').onclick=async()=>{const msg=m.querySelector('.admin-message');msg.textContent='Creando propietario…';const {data:{session}}=await state.client.auth.getSession();const body={email:val(m,'#email'),password:m.querySelector('#password').value,first_name:val(m,'#first'),last_name:val(m,'#last'),phone:val(m,'#phone')||null,address:val(m,'#address')||null,city:val(m,'#city')||null,postal_code:val(m,'#postal')||null,legal_name:val(m,'#legal')||null,tax_id:val(m,'#tax')||null};try{const r=await fetch('https://hvuseljtqdgekotrsiwd.supabase.co/functions/v1/create-owner',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw new Error(data.error||'No se ha podido crear el propietario.');msg.textContent='Propietario creado.';setTimeout(async()=>{m.remove();await refresh();renderView('owners');},500);}catch(e){msg.textContent=e.message;msg.classList.add('error');}};
+      return;
+    }
+    const m=modal('Editar propietario',`<form id="ownerForm" class="admin-form-grid"><label>Nombre<input id="first" value="${esc(o.first_name||'')}"></label><label>Apellidos<input id="last" value="${esc(o.last_name||'')}"></label><label>Email<input id="email" type="email" value="${esc(o.email||'')}"></label><label>Teléfono<input id="phone" value="${esc(o.phone||'')}"></label><label>Dirección<input id="address" value="${esc(o.address||'')}"></label><label>Localidad<input id="city" value="${esc(o.city||'')}"></label><label>Código postal<input id="postal" value="${esc(o.postal_code||'')}"></label></form><div class="modal-actions"><button id="saveOwner" class="btn btn-dark">Guardar cambios</button><button class="btn btn-light" data-close>Cerrar</button></div><p class="admin-message"></p>`);
+    m.querySelector('[data-close]').onclick=()=>m.remove();m.querySelector('#saveOwner').onclick=async()=>{const q=await state.client.rpc('admin_update_owner_profile',{p_profile_id:o.profile_id,p_first_name:val(m,'#first')||null,p_last_name:val(m,'#last')||null,p_phone:val(m,'#phone')||null,p_address:val(m,'#address')||null,p_city:val(m,'#city')||null,p_postal_code:val(m,'#postal')||null,p_email:val(m,'#email')||null});if(q.error){toast(m,q.error.message,true);return;}m.remove();await refresh();renderView('owners');};
+  }
+
+  function renderBookings(root){
+    const rows=[...state.bookings].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+    root.innerHTML=header('RESERVAS','Solicitudes y reservas')+`<div class="admin-filters"><select id="bookingFilter"><option value="all">Todos los estados</option><option value="pending">Pendientes</option><option value="confirmed">Confirmadas</option><option value="rejected">Rechazadas</option><option value="expired">Caducadas</option></select></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Espacio</th><th>Cliente</th><th>Fechas</th><th>Limpieza</th><th>Estado</th><th></th></tr></thead><tbody id="bookingRows"></tbody></table></div></div><p class="admin-message"></p>`;
+    const paint=()=>{const f=root.querySelector('#bookingFilter').value;const filtered=f==='all'?rows:rows.filter(b=>b.booking_status===f);root.querySelector('#bookingRows').innerHTML=filtered.length?filtered.map(b=>`<tr><td><strong>${esc(b.space_name)}</strong></td><td><strong>${esc(b.customer_name)}</strong><span class="table-sub">${esc(b.customer_email)}<br>${esc(b.customer_phone)}</span></td><td>${date(b.start_date)} → ${date(b.end_date)}<span class="table-sub">${b.total_days} día(s)</span></td><td>${b.cleaning_requested?'Sí':'No'}</td><td><span class="status status-${esc(b.booking_status)}">${labelStatus(b.booking_status)}</span></td><td>${b.booking_status==='pending'?`<button class="btn btn-dark" data-confirm="${b.id}">Aceptar</button> <button class="btn btn-light" data-reject="${b.id}">Rechazar</button>`:''}</td></tr>`).join(''):`<tr><td colspan="6" class="muted">No hay reservas en este estado.</td></tr>`;root.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>decideBooking(b.dataset.confirm,true));root.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>decideBooking(b.dataset.reject,false));};
+    root.querySelector('#bookingFilter').onchange=paint;paint();
+    async function decideBooking(id,confirm){const q=await state.client.rpc(confirm?'admin_confirm_booking':'admin_reject_booking',{p_booking_id:id});if(q.error){toast(root,q.error.message,true);return;}await refresh();renderView('bookings');}
+  }
+  const labelStatus=s=>({pending:'Pendiente',confirmed:'Confirmada',rejected:'Rechazada',expired:'Caducada',cancelled:'Cancelada'}[s]||s);
+
+  async function renderCalendar(root){
+    root.innerHTML=header('CALENDARIO','Bloqueos de espacios',`<select id="calendarSpace">${state.spaces.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>`)+`<div id="calendarContent"></div>`;
+    const paint=async()=>{const s=state.spaces.find(x=>x.id===root.querySelector('#calendarSpace').value);if(!s){root.querySelector('#calendarContent').innerHTML='<p class="muted">No hay espacios.</p>';return;}const [blocks,books]=await Promise.all([state.client.rpc('admin_get_blocked_dates',{p_space_id:s.id}),state.client.rpc('admin_get_space_bookings',{p_space_id:s.id})]);root.querySelector('#calendarContent').innerHTML=`<div class="calendar-admin-grid"><section class="admin-card"><p class="eyebrow">BLOQUEOS</p><h2>${esc(s.name)}</h2><div class="admin-list">${(blocks.data||[]).map(x=>`<div class="admin-list-row"><div><strong>${date(x.start_date)} → ${date(x.end_date)}</strong><span>${esc(x.reason||'Sin motivo')}</span></div><button class="btn btn-light" data-del-block="${x.id}">Eliminar</button></div>`).join('')||'<p class="muted">Sin bloqueos.</p>'}</div></section><section class="admin-card"><p class="eyebrow">RESERVAS</p><h2>Calendario de ${esc(s.name)}</h2><div class="admin-list">${(books.data||[]).filter(x=>['pending','confirmed'].includes(x.booking_status)).map(x=>`<div class="admin-list-row"><div><strong>${date(x.start_date)} → ${date(x.end_date)}</strong><span>${esc(x.customer_name)} · ${x.cleaning_requested?'Con limpieza':'Sin limpieza'}</span></div><span class="status status-${x.booking_status}">${labelStatus(x.booking_status)}</span></div>`).join('')||'<p class="muted">Sin reservas activas.</p>'}</div></section></div><div class="admin-card block-quick"><h2>Bloquear fechas</h2><div class="block-form"><label>Desde<input id="quickFrom" type="date"></label><label>Hasta<input id="quickUntil" type="date"></label><label>Motivo<input id="quickReason"></label><button id="quickAdd" class="btn btn-dark">Bloquear</button></div><p class="admin-message"></p></div>`;root.querySelectorAll('[data-del-block]').forEach(b=>b.onclick=async()=>{const q=await state.client.rpc('admin_delete_blocked_date',{p_blocked_id:b.dataset.delBlock});if(q.error){toast(root,q.error.message,true);return;}paint();});root.querySelector('#quickAdd').onclick=async()=>{const from=val(root,'#quickFrom'),until=val(root,'#quickUntil');const q=await state.client.rpc('admin_create_blocked_date',{p_space_id:s.id,p_start_date:from,p_end_date:until,p_reason:val(root,'#quickReason')||null});if(q.error){toast(root,q.error.message,true);return;}paint();};};
+    root.querySelector('#calendarSpace').onchange=paint;await paint();
+  }
+
+  async function refresh(){await loadAll(state.client);}
+
+  window.initAdminArea=async function(){
+    const root=document.querySelector('#adminArea');if(!root)return;
+    root.innerHTML='<p class="muted">Comprobando acceso…</p>';
+    try{const c=await requireAdmin();if(!c)return;await loadAll(c);shell();renderView('dashboard');}
+    catch(e){console.error(e);root.innerHTML=`<div class="admin-card"><h2>No se ha podido cargar la administración</h2><p class="message error">${esc(e.message||'Error desconocido')}</p><a class="btn btn-light" href="area-privada.html">Volver al área privada</a></div>`;}
+  };
 })();

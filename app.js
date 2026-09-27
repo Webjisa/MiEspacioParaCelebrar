@@ -189,8 +189,11 @@ function renderBookingCalendar(state){
   const trailing=(7-((startWeek+daysInMonth)%7))%7;
   for(let i=1;i<=trailing;i++){const nm=month===12?1:month+1,ny=month===12?year+1:year;cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(ny,nm,i)}" disabled>${i}</button>`;}
   cal.innerHTML=`<div class="calendar-head"><button type="button" class="calendar-nav" data-cal-prev aria-label="Mes anterior">‹</button><strong>${esc(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><button type="button" class="calendar-nav" data-cal-next aria-label="Mes siguiente">›</button></div><div class="calendar-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-grid">${cells}</div><div class="calendar-legend"><span><i class="legend-dot confirmed"></i>Ocupada</span><span><i class="legend-dot pending"></i>Retenida</span></div>`;
-  cal.querySelector('[data-cal-prev]')?.addEventListener('click',()=>{let m=month-1,y=year;if(m<1){m=12;y--;}state.month=m;state.year=y;renderBookingCalendar(state);});
-  cal.querySelector('[data-cal-next]')?.addEventListener('click',()=>{let m=month+1,y=year;if(m>12){m=1;y++;}state.month=m;state.year=y;renderBookingCalendar(state);});
+  // El listener global de initBooking cierra el calendario cuando detecta un clic fuera.
+  // Este manejador evita que los clics dentro del calendario lleguen a ese listener.
+  cal.onclick=e=>e.stopPropagation();
+  cal.querySelector('[data-cal-prev]')?.addEventListener('click',e=>{e.stopPropagation();let m=month-1,y=year;if(m<1){m=12;y--;}state.month=m;state.year=y;renderBookingCalendar(state);});
+  cal.querySelector('[data-cal-next]')?.addEventListener('click',e=>{e.stopPropagation();let m=month+1,y=year;if(m>12){m=1;y++;}state.month=m;state.year=y;renderBookingCalendar(state);});
   cal.querySelectorAll('.calendar-day:not(.outside):not([disabled])').forEach(btn=>btn.addEventListener('click',()=>selectCalendarDate(btn.dataset.date,state)));
 }
 function openBookingCalendar(target,state){
