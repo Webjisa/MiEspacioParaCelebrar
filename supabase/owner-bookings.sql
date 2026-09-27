@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- MiEspacioParaCelebrar — solicitudes en área privada
 -- 🗂️ GUARDAR — Owner bookings + pricing v2
 -- ▶️ SOLO EJECUTAR en Supabase SQL Editor.

@@ -1,4 +1,4 @@
-const APP_VERSION='18.0';
+const APP_VERSION='20.0';
 const SUPABASE_URL = 'https://hvuseljtqdgekotrsiwd.supabase.co';
 const SUPABASE_ANON_KEY = window.MIESPACIO_SUPABASE_ANON_KEY || '';
 const ADMIN_EMAIL = 'miespacioparacelebrar@gmail.com';
@@ -105,7 +105,7 @@ async function renderSpaceDetail(){
   <section class="gallery-section"><div class="container gallery">${[s.image,...s.gallery].slice(0,6).map((img,i)=>`<img class="g${i+1}" src="${esc(img)}" alt="${esc(s.name)}">`).join('')}</div></section>
   <section class="section soft"><div class="container details-grid"><div><p class="eyebrow">PRECIOS Y CONDICIONES</p><h2>Lo que debes saber antes de solicitar</h2></div><div class="rule-card"><div><span>Precio</span><strong>${esc(priceRange(s))} según el día</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}${s.cleaningAvailable?`<div><span>Limpieza</span><strong>${euro(s.cleaningPrice)}</strong></div>`:''}<div><span>Reserva</span><strong>Solicitud previa, no confirmación automática</strong></div><div><span>Retención</span><strong>Las fechas se mantienen 72 horas</strong></div></div></div></section>
   <section class="section map-section"><div class="container"><div class="section-head"><div><p class="eyebrow">UBICACIÓN</p><h2>Cómo llegar</h2></div><p class="muted">Ubicación del espacio.</p></div><div id="spaceMap" class="map"></div></div></section>
-  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta el precio de tus fechas</h2><p class="muted">Selecciona las fechas. El sistema calculará el precio según el día. Después podrás enviar una solicitud y el propietario contactará contigo para cerrar las condiciones de la reserva.</p></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><div class="date-picker-wrap"><input id="startDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="startDate" aria-label="Abrir calendario">▾</button></div><label for="endDate">Fecha de fin</label><div class="date-picker-wrap"><input id="endDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="endDate" aria-label="Abrir calendario">▾</button></div><div id="bookingCalendar" class="booking-calendar" hidden></div><label class="check booking-cleaning" ${s.cleaningAvailable?'':'hidden'}><input id="cleaning" type="checkbox"> <span>Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</span></label><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><button class="btn btn-dark full" id="reserveBtn" type="button">Enviar solicitud</button><p class="micro">Las fechas se mantienen retenidas durante 72 horas. La reserva queda confirmada únicamente cuando el propietario la acepta.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
+  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta el precio de tus fechas</h2><p class="muted">Selecciona las fechas. El sistema calculará el precio según el día. Después podrás enviar una solicitud y el propietario contactará contigo para cerrar las condiciones de la reserva.</p></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><div class="date-picker-wrap"><input id="startDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" maxlength="10" pattern="\d{2}/\d{2}/\d{4}" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="startDate" aria-label="Abrir calendario">▾</button></div><label for="endDate">Fecha de fin</label><div class="date-picker-wrap"><input id="endDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" maxlength="10" pattern="\d{2}/\d{2}/\d{4}" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="endDate" aria-label="Abrir calendario">▾</button></div><div id="bookingCalendar" class="booking-calendar" hidden></div><label class="check booking-cleaning" ${s.cleaningAvailable?'':'hidden'}><input id="cleaning" type="checkbox"> <span>Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</span></label><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><button class="btn btn-dark full" id="reserveBtn" type="button">Enviar solicitud</button><p class="micro">Las fechas se mantienen retenidas durante 72 horas. La reserva queda confirmada únicamente cuando el propietario la acepta.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
   initMap('spaceMap',[s],true);initBooking(s);
 }
 function parseUserDate(value){
@@ -113,9 +113,16 @@ function parseUserDate(value){
   let y,mo,d,m=v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if(m){d=Number(m[1]);mo=Number(m[2]);y=Number(m[3]);}
   else{m=v.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return '';y=Number(m[1]);mo=Number(m[2]);d=Number(m[3]);}
+  const iso=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   const check=new Date(`${iso}T12:00:00`);
   if(Number.isNaN(check.getTime())||check.getFullYear()!==y||check.getMonth()+1!==mo||check.getDate()!==d)return '';
   return iso;
+}
+function formatDateTyping(value){
+  const digits=String(value||'').replace(/\D/g,'').slice(0,8);
+  if(digits.length<=2)return digits;
+  if(digits.length<=4)return `${digits.slice(0,2)}/${digits.slice(2)}`;
+  return `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`;
 }
 function displayDate(iso){if(!iso)return '';const [y,m,d]=iso.split('-');return `${d}/${m}/${y}`;}
 function dateToParts(iso){const [y,m,d]=iso.split('-').map(Number);return {y,m,d};}
@@ -217,8 +224,12 @@ async function initBooking(s){
   const initial=minDate;state.start=initial;state.end=initial;setBookingInput('startDate',initial);setBookingInput('endDate',initial);updatePriceBox(s);
   document.querySelectorAll('.date-picker-toggle').forEach(toggle=>toggle.addEventListener('click',()=>openBookingCalendar(toggle.dataset.dateTarget,state)));
   document.querySelectorAll('.booking-date-input').forEach(el=>{
-    el.addEventListener('focus',()=>openBookingCalendar(el.id,state));
-    el.addEventListener('input',()=>{el.classList.remove('date-unavailable','date-invalid');});
+    el.addEventListener('focus',()=>{setTimeout(()=>openBookingCalendar(el.id,state),0);});
+    el.addEventListener('input',()=>{
+      const formatted=formatDateTyping(el.value);
+      if(el.value!==formatted){el.value=formatted;}
+      el.classList.remove('date-unavailable','date-invalid');
+    });
     el.addEventListener('blur',()=>{
       const iso=validateManualDate(el.id,state);
       if(!iso){updatePriceBox(s);return;}

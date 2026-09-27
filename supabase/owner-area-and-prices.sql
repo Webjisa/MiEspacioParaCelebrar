@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- MiEspacioParaCelebrar — precios por día, fianza configurable y acceso propietario
 -- ▶️ SOLO EJECUTAR en Supabase SQL Editor. No es necesario guardarlo como archivo de trabajo.
 

@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- MiEspacioParaCelebrar — acceso seguro del propietario al panel
 -- 🗂️ GUARDAR — Owner dashboard RPC
 -- ▶️ SOLO EJECUTAR en Supabase SQL Editor. Esta SQL debe conservarse en el proyecto.

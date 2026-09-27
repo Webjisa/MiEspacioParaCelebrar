@@ -1,46 +1,49 @@
-MiEspacioParaCelebrar · v18
+# MiEspacioParaCelebrar · v23
 
+Versión consolidada para acercar el proyecto a la versión final.
 
-> Versión de entrega: v16
-# MiEspacioParaCelebrar
+## Qué incluye
+- Web pública de espacios activos.
+- Fichas individuales con galería, características, precios, condiciones, disponibilidad y mapa.
+- Solicitud de reserva sin pago online ni almacenamiento de datos de pago.
+- Retención de fechas durante 72 horas y confirmación/rechazo por propietario o administrador.
+- Cálculo centralizado de alquiler, limpieza y fianza sin guardar importes de reserva en `bookings`.
+- Área privada de propietarios con calendario, historial y acciones sobre solicitudes.
+- Panel de administración para espacios, propietarios, fotografías, características, fechas bloqueadas, reservas y contenido.
+- Mapas generales e individuales.
+- Menú móvil y calendario de disponibilidad adaptado a móvil.
+- Textos legales base.
+- Display físico NFC + QR reutilizable por espacio.
 
-Web pública y base para la gestión privada de espacios para celebraciones.
+## Display físico NFC + QR
+Cada local puede disponer de un pequeño display de sobremesa impreso en 3D. La etiqueta NFC se coloca oculta detrás de la placa y el QR queda visible. Ambos llevan a la ficha del espacio y a su disponibilidad.
 
-## Modelo actual
-- La portada explica únicamente la finalidad del servicio; los espacios se muestran en `espacios.html`.
-- El cliente final solo ve espacios activos y dentro de su periodo de publicación.
-- Cada espacio puede tener precios distintos para lunes-jueves, viernes, sábado y domingo.
-- La fianza es opcional y configurable por espacio; si no está configurada, no se muestra.
-- La solicitud de reserva retiene las fechas durante 72 horas y no implica confirmación automática.
-- No existe descuento por cliente recurrente.
-- No existe pago online ni depósito inicial del 50 %.
-- El propietario acuerda directamente con el cliente las condiciones y el pago.
-- El propietario tiene un área privada donde ve locales activos con su fecha de caducidad e inactivos en gris con su fecha de caducidad.
-- Solo el administrador puede ampliar el periodo activo.
-- El pie muestra `Admin: miespacioparacelebrar@gmail.com`.
-- La ubicación pública usa mapa general de espacios activos y mapa individual del espacio.
+Archivos: `display-nfc/`
+- `display_nfc_base.stl`
+- `display_nfc_plate.stl`
+- `display_nfc.scad`
+- `display_nfc.stl`
+- `tarjeta-display-la-nube.png`
+- `qr-la-nube.png`
+- `render-concepto-la-nube.png`
+
+La etiqueta NFC no contiene datos personales; únicamente una URL NDEF. El destino puede evolucionar sin cambiar físicamente la etiqueta.
 
 ## Supabase
-`supabase/active-period-and-location.sql` añade ubicación y periodo de actividad.
-`supabase/owner-area-and-prices.sql` añade fianza configurable y permisos de lectura para el área privada.
+El archivo que hay que revisar/ejecutar para esta versión es:
 
-El frontend necesita la clave pública de Supabase en `supabase-config.js` para autenticación, solicitudes y área privada.
+`supabase/v23-final.sql`
 
+Está preparado para ser idempotente en las partes de esquema y funciones: añade los campos de ubicación/actividad que falten, refuerza las políticas necesarias para administración y deja disponibles las funciones del panel.
 
-## V4
-- Los espacios solo son públicos entre `active_from` y `active_until`, además de `active = true`.
-- La web no muestra un precio "Desde"; muestra que el precio se calcula según el día.
-- La fianza solo se muestra si existe un valor configurado.
-- La portada no lista espacios ni muestra mapas de espacios.
+**No ejecutes todos los SQL antiguos otra vez a ciegas.** Para la actualización a v23 utiliza el SQL final indicado y conserva los anteriores como histórico.
 
-## Ubicación de La Nube
+## Pendiente antes de considerarlo producción definitiva
+1. Conectar el proveedor de correo real y desplegar sus Edge Functions.
+2. Completar identidad y domicilio del responsable en los textos legales.
+3. Ejecutar el SQL final en Supabase.
+4. Conectar GitHub y publicar esta versión.
+5. Hacer la prueba integral móvil/ordenador: alta de propietario → alta de espacio → fotos → disponibilidad → solicitud → aceptación/rechazo → bloqueo/desbloqueo → display NFC/QR.
 
-La ubicación facilitada para **La Nube** es `37.417400, -4.485511`.
-La SQL `supabase/set-la-nube-location.sql` actualiza esas coordenadas en Supabase.
-
-## v14 — precios de la solicitud
-- El área del propietario muestra alquiler, limpieza, fianza y total.
-- El cálculo se centraliza en `public.get_booking_pricing` y no guarda importes económicos en `bookings`.
-- La fianza se suma una sola vez.
-- El alquiler se calcula día por día según lunes-jueves, viernes, sábado y domingo.
-- El mismo cálculo queda preparado para reutilizarlo en las notificaciones por email.
+## Seguridad
+El navegador contiene únicamente la clave pública de Supabase. Las operaciones sensibles se realizan mediante RLS y funciones `security definer`; nunca se debe introducir una `service_role` key en GitHub Pages.

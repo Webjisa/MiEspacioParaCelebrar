@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- MiEspacioParaCelebrar — reserva: comprobación de la función existente
 -- 🗂️ GUARDAR — Reservation flow verification
 -- ▶️ SOLO EJECUTAR en Supabase SQL Editor.

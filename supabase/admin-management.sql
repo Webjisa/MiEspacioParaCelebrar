@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- MiEspacioParaCelebrar — gestión básica de propietarios y locales desde Administración
 -- ▶️ SOLO EJECUTAR en Supabase SQL Editor. No es necesario guardarlo aparte.
 

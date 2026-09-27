@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- 🗂️ NO GUARDAR / ▶️ SOLO EJECUTAR
 -- Ubicación exacta facilitada para La Nube.
 -- Coordenadas: 37.417400, -4.485511

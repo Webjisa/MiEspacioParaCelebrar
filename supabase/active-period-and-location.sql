@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- MiEspacioParaCelebrar — periodo de actividad y ubicación pública de espacios
 -- Ejecutar en Supabase SQL Editor.
 

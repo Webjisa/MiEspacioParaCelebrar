@@ -1,3 +1,4 @@
+-- HISTÓRICO: para v22 utilizar supabase/v22-final.sql como actualización consolidada.
 -- MiEspacioParaCelebrar
 -- 🗂️ GUARDAR — Availability calendar v1
 -- Devuelve únicamente rangos de fechas no disponibles.
