@@ -53,3 +53,6 @@ El navegador contiene únicamente la clave pública de Supabase. Las operaciones
 - Panel de administración basado en las RPC V23 reales.
 - Las coordenadas se pueden localizar mediante dirección, sin almacenar una columna de dirección en `spaces`.
 - Estructura del paquete renombrada a `MiEspacioParaCelebrar-v26`.
+
+## V27
+Corrección del calendario de reservas: navegación mensual con manejadores directos en las flechas y renovación de cache-busting a `?v=27`.

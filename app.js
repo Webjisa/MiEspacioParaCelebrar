@@ -189,12 +189,25 @@ function renderBookingCalendar(state){
   const trailing=(7-((startWeek+daysInMonth)%7))%7;
   for(let i=1;i<=trailing;i++){const nm=month===12?1:month+1,ny=month===12?year+1:year;cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(ny,nm,i)}" disabled>${i}</button>`;}
   cal.innerHTML=`<div class="calendar-head"><button type="button" class="calendar-nav" data-cal-prev aria-label="Mes anterior">‹</button><strong>${esc(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><button type="button" class="calendar-nav" data-cal-next aria-label="Mes siguiente">›</button></div><div class="calendar-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-grid">${cells}</div><div class="calendar-legend"><span><i class="legend-dot confirmed"></i>Ocupada</span><span><i class="legend-dot pending"></i>Retenida</span></div>`;
-  // El listener global de initBooking cierra el calendario cuando detecta un clic fuera.
-  // Este manejador evita que los clics dentro del calendario lleguen a ese listener.
-  cal.onclick=e=>e.stopPropagation();
-  cal.querySelector('[data-cal-prev]')?.addEventListener('click',e=>{e.stopPropagation();let m=month-1,y=year;if(m<1){m=12;y--;}state.month=m;state.year=y;renderBookingCalendar(state);});
-  cal.querySelector('[data-cal-next]')?.addEventListener('click',e=>{e.stopPropagation();let m=month+1,y=year;if(m>12){m=1;y++;}state.month=m;state.year=y;renderBookingCalendar(state);});
-  cal.querySelectorAll('.calendar-day:not(.outside):not([disabled])').forEach(btn=>btn.addEventListener('click',()=>selectCalendarDate(btn.dataset.date,state)));
+
+  // Los botones de navegación reciben su propio manejador cada vez que se
+  // pinta el calendario. Esto evita depender de la propagación del evento
+  // desde elementos que se reemplazan mediante innerHTML.
+  const prev=cal.querySelector('[data-cal-prev]');
+  const next=cal.querySelector('[data-cal-next]');
+  const goMonth=(delta,e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    let m=state.month+delta;
+    let y=state.year;
+    if(m<1){m=12;y--;}
+    if(m>12){m=1;y++;}
+    state.month=m;
+    state.year=y;
+    renderBookingCalendar(state);
+  };
+  prev?.addEventListener('click',e=>goMonth(-1,e));
+  next?.addEventListener('click',e=>goMonth(1,e));
 }
 function openBookingCalendar(target,state){
   state.activeTarget=target;const iso=parseUserDate(document.querySelector(`#${target}`)?.value)||state.start||state.minDate||localISODate();const p=dateToParts(iso);state.year=p.y;state.month=p.m;state.open=true;const cal=document.querySelector('#bookingCalendar');if(cal){cal.hidden=false;document.querySelector(`#${target}`)?.setAttribute('aria-expanded','true');renderBookingCalendar(state);}}
@@ -225,7 +238,21 @@ async function initBooking(s){
   const unavailable=await getUnavailableDates(s.id);
   const state={space:s,minDate,maxDate,unavailable,start:'',end:'',endWasAuto:true,activeTarget:'startDate',year:new Date().getFullYear(),month:new Date().getMonth()+1};
   const initial=minDate;state.start=initial;state.end=initial;setBookingInput('startDate',initial);setBookingInput('endDate',initial);updatePriceBox(s);
-  document.querySelectorAll('.date-picker-toggle').forEach(toggle=>toggle.addEventListener('click',()=>openBookingCalendar(toggle.dataset.dateTarget,state)));
+  document.querySelectorAll('.date-picker-toggle').forEach(toggle=>toggle.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openBookingCalendar(toggle.dataset.dateTarget,state);}));
+  const calendar=document.querySelector('#bookingCalendar');
+  if(calendar){
+    calendar.addEventListener('click',e=>{
+      const day=e.target.closest('.calendar-day:not(.outside):not([disabled])');
+      if(day){
+        e.preventDefault();
+        e.stopPropagation();
+        selectCalendarDate(day.dataset.date,state);
+      }
+    });
+    calendar.addEventListener('pointerdown',e=>{
+      if(e.target.closest('.calendar-nav')) e.stopPropagation();
+    });
+  }
   document.querySelectorAll('.booking-date-input').forEach(el=>{
     el.addEventListener('focus',()=>{setTimeout(()=>openBookingCalendar(el.id,state),0);});
     el.addEventListener('input',()=>{
@@ -246,7 +273,14 @@ async function initBooking(s){
       updatePriceBox(s);
     });
   });
-  document.addEventListener('click',e=>{const cal=document.querySelector('#bookingCalendar');if(!cal||cal.hidden)return;if(!cal.contains(e.target)&&!e.target.closest('.date-picker-wrap'))closeBookingCalendar();},{once:false});
+  document.addEventListener('click',e=>{
+    const cal=document.querySelector('#bookingCalendar');
+    if(!cal||cal.hidden)return;
+    if(e.target.closest('.calendar-nav'))return;
+    if(cal.contains(e.target))return;
+    if(e.target.closest('.date-picker-wrap'))return;
+    closeBookingCalendar();
+  });
   cleanEl?.addEventListener('change',()=>updatePriceBox(s));
   btn.addEventListener('click',async()=>{
     const start=parseUserDate(startEl.value),end=parseUserDate(endEl.value),name=document.querySelector('#customerName').value.trim(),email=document.querySelector('#customerEmail').value.trim(),phone=document.querySelector('#customerPhone').value.trim(),cleaning=!!cleanEl?.checked;
