@@ -33,7 +33,7 @@ export default {
         );
       }
 
-      // Comprobar que quien realiza la operación es un administrador
+      // Comprobar que quien realiza la operación es administrador
       const { data: adminProfile, error: adminProfileError } =
         await ctx.supabaseAdmin
           .from("profiles")
@@ -83,10 +83,13 @@ export default {
       }
 
       // Crear usuario mediante invitación.
-      // Supabase enviará al propietario el correo para activar su cuenta
-      // y establecer su propia contraseña.
+      // El propietario recibirá un correo y establecerá
+      // personalmente su contraseña.
       const { data: authData, error: authError } =
-        await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(email);
+        await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+          redirectTo:
+            "https://webjisa.github.io/MiEspacioParaCelebrar/activar-cuenta.html",
+        });
 
       if (authError) {
         console.error(
@@ -131,8 +134,8 @@ export default {
           ownerError,
         );
 
-        // Si falla la creación del propietario, eliminar
-        // también el usuario Auth que acabamos de crear.
+        // Si falla la creación del propietario,
+        // eliminar también el usuario Auth creado.
         await ctx.supabaseAdmin.auth.admin.deleteUser(newUserId);
 
         return Response.json(
