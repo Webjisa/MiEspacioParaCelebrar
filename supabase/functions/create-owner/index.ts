@@ -34,7 +34,8 @@ Deno.serve(async req => {
     const firstName = String(b.first_name || '').trim();
     const lastName = String(b.last_name || '').trim();
 
-    if (!email || !firstName) return json({ error: 'El nombre y el email son obligatorios.' }, 400);
+    if (!email || !firstName || !lastName) return json({ error: 'Nombre, apellidos y email son obligatorios.' }, 400);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'El email no tiene un formato válido.' }, 400);
 
     const { data: invitation, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${APP_URL}/activar-cuenta.html`
@@ -76,11 +77,21 @@ Deno.serve(async req => {
 
     return json({ ok: true, invited: true, profile });
   } catch (e) {
+    const raw = String((e as Error)?.message || e || '');
+    const lower = raw.toLowerCase();
+    let message = 'No se ha podido crear el propietario.';
+    if (lower.includes('already been registered') || lower.includes('already exists') || lower.includes('user already registered')) {
+      message = 'Ese email ya está registrado. Utiliza otro email.';
+    } else if (lower.includes('invalid email')) {
+      message = 'El email no tiene un formato válido.';
+    } else if (lower.includes('rate limit')) {
+      message = 'Se ha alcanzado temporalmente el límite de invitaciones. Inténtalo de nuevo más tarde.';
+    }
     if (createdUserId) {
       await admin.from('owners').delete().eq('profile_id', createdUserId);
       await admin.from('profiles').delete().eq('id', createdUserId);
       await admin.auth.admin.deleteUser(createdUserId);
     }
-    return json({ error: String((e as Error)?.message || e) }, 400);
+    return json({ error: message }, 400);
   }
 });
