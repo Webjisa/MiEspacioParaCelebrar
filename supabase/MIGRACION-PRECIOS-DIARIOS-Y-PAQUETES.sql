@@ -227,7 +227,7 @@ create or replace function public.get_booking_quote(
 language plpgsql security definer set search_path=public,private as $$
 declare
   v_deposit numeric:=0; v_cleaning_available boolean:=false; v_cleaning_price numeric:=0; v_rental numeric:=0; v_cleaning numeric:=0; v_services_total numeric:=0;
-  v_has_override boolean:=false; v_day date; v_price numeric; v_requested jsonb; v_service_id uuid; v_service_name text; v_service_price numeric; v_group text; v_required boolean; v_replaces boolean; v_mode text; v_allowed smallint[]; v_dep uuid;
+  v_has_override boolean:=false; v_day date; v_price numeric; v_requested jsonb; v_service_id uuid; v_service_name text; v_service_description text; v_service_price numeric; v_group text; v_required boolean; v_replaces boolean; v_mode text; v_allowed smallint[]; v_dep uuid;
   v_services jsonb:='[]'::jsonb; v_daily jsonb:='[]'::jsonb; v_selected_ids uuid[]:=array[]::uuid[]; v_days integer:=(p_end_date-p_start_date)+1;
 begin
   if p_start_date is null or p_end_date is null or p_end_date<p_start_date then raise exception 'Rango de fechas no válido'; end if;
@@ -247,12 +247,11 @@ begin
     begin v_service_id:=(v_requested->>'id')::uuid; exception when others then raise exception 'Servicio seleccionado no válido'; end;
     if v_service_id=any(v_selected_ids) then raise exception 'No se puede seleccionar dos veces la misma opción'; end if;
     v_selected_ids:=array_append(v_selected_ids,v_service_id);
-    select sc.name,ss.price,ss.selection_group,ss.selection_required,ss.replaces_rental,ss.price_mode,ss.allowed_days,ss.depends_on_service_id
-      into v_service_name,v_service_price,v_group,v_required,v_replaces,v_mode,v_allowed,v_dep
+    select sc.name,sc.description,ss.price,ss.selection_group,ss.selection_required,ss.replaces_rental,ss.price_mode,ss.allowed_days,ss.depends_on_service_id
+      into v_service_name,v_service_description,v_service_price,v_group,v_required,v_replaces,v_mode,v_allowed,v_dep
     from public.space_services ss join public.service_catalog sc on sc.id=ss.service_id
     where ss.id=v_service_id and ss.space_id=p_space_id and ss.active=true and ss.included=false and sc.active=true;
     if not found then raise exception 'Uno de los servicios seleccionados ya no está disponible'; end if;
-    if v_dep is not null and not (v_dep=any(v_selected_ids)) then raise exception 'La opción "%" requiere seleccionar primero el paquete correspondiente',v_service_name; end if;
     if v_allowed is not null and exists(select 1 from generate_series(p_start_date,p_end_date,interval '1 day') d where extract(isodow from d)::smallint <> all(v_allowed)) then
       raise exception 'La opción "%" no está disponible para todas las fechas seleccionadas',v_service_name;
     end if;
@@ -262,7 +261,15 @@ begin
     if coalesce(v_replaces,false) then v_has_override:=true; end if;
     if coalesce(v_mode,'fixed')='per_day' then v_services_total:=v_services_total+coalesce(v_service_price,0)*v_days;
     else v_services_total:=v_services_total+coalesce(v_service_price,0); end if;
-    v_services:=v_services||jsonb_build_array(jsonb_build_object('id',v_service_id,'name',v_service_name,'price',v_service_price,'selection_group',v_group,'price_mode',coalesce(v_mode,'fixed'),'replaces_rental',coalesce(v_replaces,false),'depends_on_service_id',v_dep));
+    v_services:=v_services||jsonb_build_array(jsonb_build_object('id',v_service_id,'service_id',(select ss.service_id from public.space_services ss where ss.id=v_service_id),'name',v_service_name,'description',v_service_description,'price',v_service_price,'total',case when coalesce(v_mode,'fixed')='per_day' then coalesce(v_service_price,0)*v_days else coalesce(v_service_price,0) end,'selection_group',v_group,'price_mode',coalesce(v_mode,'fixed'),'replaces_rental',coalesce(v_replaces,false),'depends_on_service_id',v_dep));
+  end loop;
+
+  -- Las dependencias se comparan contra service_catalog.id, mientras la selección pública usa space_services.id.
+  -- Se valida después de leer todas las opciones para no depender del orden en que lleguen.
+  for v_dep in select distinct ss.depends_on_service_id from public.space_services ss where ss.space_id=p_space_id and ss.active=true and ss.included=false and ss.id=any(v_selected_ids) and ss.depends_on_service_id is not null loop
+    if not exists(select 1 from public.space_services dep where dep.space_id=p_space_id and dep.active=true and dep.included=false and dep.id=any(v_selected_ids) and dep.service_id=v_dep) then
+      raise exception 'Una de las opciones seleccionadas requiere el paquete correspondiente';
+    end if;
   end loop;
 
   for v_group in select distinct ss.selection_group from public.space_services ss where ss.space_id=p_space_id and ss.active=true and ss.included=false and ss.selection_required=true and ss.selection_group is not null loop

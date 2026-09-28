@@ -104,13 +104,20 @@ function renderPublicServiceOptions(s){
     const groupedChoice=key!=='ungrouped';
     const required=groupedChoice&&items.some(x=>x.selection_required);
     const title=groupedChoice?(items[0].selection_group==='paquete'?'Elige un paquete':'Elige una opción'):'Servicios adicionales';
-    return `<div class="service-choice-group ${groupedChoice?'service-package-group':''}"><strong>${esc(title)}${required?' · obligatorio':''}</strong>${items.map(x=>{const allowed=(x.allowed_days||[]).join(',');const inputType=groupedChoice?'radio':'checkbox';const name=groupedChoice?`service-group-${serviceGroupKey(x.selection_group)}`:'';const mode=x.price_mode==='per_day'?' / día':'';return `<label class="check service-option" data-service-option data-selection-group="${esc(x.selection_group||'')}" data-required="${required?'true':'false'}" data-allowed-days="${esc(allowed)}" data-depends-on="${esc(x.depends_on_service_id||'')}"><input type="${inputType}" class="service-check" name="${name}" value="${esc(x.id)}" data-price="${Number(x.price||0)}" data-replaces-rental="${x.replaces_rental?'true':'false'}" data-price-mode="${esc(x.price_mode||'fixed')}"><span>${esc(x.name)} <small>(${euro(x.price)}${mode})</small></span></label>`;}).join('')}</div>`;
+    const options=items.map(x=>{
+      const allowed=(x.allowed_days||[]).join(',');
+      const inputType=groupedChoice?'radio':'checkbox';
+      const name=groupedChoice?`service-group-${serviceGroupKey(x.selection_group)}`:'';
+      const mode=x.price_mode==='per_day'?' / día':'';
+      return `<label class="check service-option" data-service-option data-selection-group="${esc(x.selection_group||'')}" data-required="${required?'true':'false'}" data-allowed-days="${esc(allowed)}" data-depends-on="${esc(x.depends_on_service_id||'')}"><input type="${inputType}" class="service-check" name="${name}" value="${esc(x.id)}" data-catalog-id="${esc(x.service_id||'')}" data-price="${Number(x.price||0)}" data-replaces-rental="${x.replaces_rental?'true':'false'}" data-price-mode="${esc(x.price_mode||'fixed')}"><span><strong>${esc(x.name)}</strong> <small>(${euro(x.price)}${mode})</small>${x.description?`<small class="service-description">${esc(x.description)}</small>`:''}</span></label>`;
+    }).join('');
+    return `<div class="service-choice-group ${groupedChoice?'service-package-group':''}"><strong>${esc(title)}${required?' · obligatorio':''}</strong>${options}</div>`;
   }).join('');
 }
 function updateServiceAvailability(s,start,end){
   const inputs=[...document.querySelectorAll('.service-check')];if(!inputs.length)return;
   let dates=[];if(start&&end&&end>=start){let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`);while(d<=last){dates.push(d.getDay()===0?7:d.getDay());d.setDate(d.getDate()+1);}}
-  inputs.forEach(input=>{const option=input.closest('[data-service-option]');const raw=option?.dataset.allowedDays||'';const allowed=raw?raw.split(',').map(Number).filter(Boolean):[];const dep=option?.dataset.dependsOn||'';const dependencySelected=!dep||!!document.querySelector(`.service-check[value=\"${dep}\"]:checked`);const validDays=!allowed.length||(!dates.length?true:dates.every(day=>allowed.includes(day)));const valid=dependencySelected&&validDays;input.disabled=!valid;const label=option;if(label){label.classList.toggle('service-unavailable',!valid);if(!valid&&input.checked){input.checked=false;}}});
+  inputs.forEach(input=>{const option=input.closest('[data-service-option]');const raw=option?.dataset.allowedDays||'';const allowed=raw?raw.split(',').map(Number).filter(Boolean):[];const dep=option?.dataset.dependsOn||'';const dependencySelected=!dep||!![...document.querySelectorAll('.service-check:checked')].some(x=>String(x.dataset.catalogId||'')===String(dep));const validDays=!allowed.length||(!dates.length?true:dates.every(day=>allowed.includes(day)));const valid=dependencySelected&&validDays;input.disabled=!valid;const label=option;if(label){label.classList.toggle('service-unavailable',!valid);if(!valid&&input.checked){input.checked=false;}}});
 }
 async function renderSpaceDetail(){
   const root=document.querySelector('#spaceDetail');if(!root)return;const s=await getSelectedSpace();
@@ -183,8 +190,8 @@ function updatePriceBox(s){
   const deposit=Number(s.deposit||0);let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),rows='';
   while(d<=last){const iso=localISODate(d),p=priceForDate(s,iso);rows+=`<div><span>${esc(formatDateLong(iso))}</span><strong>${euro(p)}</strong></div>`;d.setDate(d.getDate()+1);}
   const finalTotal=rentalTotal+Number(cleaning||0)+serviceTotal+deposit;
-  const selectedNames=selected.map(e=>{const o=s.services.find(x=>String(x.id)===String(e.value));return o?.name;}).filter(Boolean);
-  box.innerHTML=rows+`${replaces?'<div><span>Precio base diario</span><strong>Sustituido por paquete</strong></div>':`<div><span>Total alquiler</span><strong>${euro(rentalTotal)}</strong></div>`}${selectedNames.length?`<div><span>Opciones / servicios</span><strong>${euro(serviceTotal)}</strong></div>`:''}${s.cleaningAvailable&&cleaning?`<div><span>Limpieza</span><strong>${euro(cleaning)}</strong></div>`:''}${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(deposit)}</strong></div>`:''}<div class="total"><span>Total <small>(Fianza incluida)</small></span><strong>${euro(finalTotal)}</strong></div>`;box.hidden=false;
+  const selectedDetails=selected.map(e=>{const o=s.services.find(x=>String(x.id)===String(e.value));if(!o)return null;const p=Number(o.price||0)*(o.price_mode==='per_day'?calc.days:1);return {name:o.name,total:p,unit:o.price,mode:o.price_mode||'fixed'};}).filter(Boolean);
+  box.innerHTML=rows+`${replaces?'<div><span>Precio base diario</span><strong>Sustituido por paquete</strong></div>':`<div><span>Total alquiler</span><strong>${euro(rentalTotal)}</strong></div>`}${selectedDetails.length?`<div><span>Opciones / servicios</span><strong>${euro(serviceTotal)}</strong></div>${selectedDetails.map(x=>`<div><span>${esc(x.name)}</span><strong>${euro(x.total)}${x.mode==='per_day'?' · '+euro(x.unit)+' / día':''}</strong></div>`).join('')}`:''}${s.cleaningAvailable&&cleaning?`<div><span>Limpieza</span><strong>${euro(cleaning)}</strong></div>`:''}${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(deposit)}</strong></div>`:''}<div class="total"><span>Total <small>(Fianza incluida)</small></span><strong>${euro(finalTotal)}</strong></div>`;box.hidden=false;
 }
 
 function renderBookingCalendar(state){

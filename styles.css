@@ -159,3 +159,4 @@
 .service-days{grid-column:1/-1;padding:10px 0}
 .check-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 @media (max-width:700px){.package-grid{grid-template-columns:1fr}.package-card{padding:16px}}
+.service-description{display:block;margin-top:4px;line-height:1.35}

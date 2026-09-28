@@ -280,3 +280,11 @@ Esta migración:
 - añade sus fotografías, características, fianzas, horarios y paquetes/precios indicados en los carteles.
 
 No volver a ejecutar `FINAL-2026.sql` después de esta migración.
+
+## Actualización 2026-09-28 — precios diarios y paquetes
+
+- La versión actual usa 7 precios independientes, uno por cada día de la semana.
+- La reserva suma el precio de cada fecha seleccionada.
+- Los paquetes y servicios propios del espacio se pueden seleccionar durante la reserva.
+- `supabase/CORRECCION-PAQUETES-Y-RESERVA-2026-09-28.sql` corrige la validación de dependencias y amplía el snapshot con descripción y total de cada opción.
+- Ejecutar esa corrección una vez si la migración de precios/paquetes ya fue ejecutada. No ejecutar `FINAL-2026.sql` después.
