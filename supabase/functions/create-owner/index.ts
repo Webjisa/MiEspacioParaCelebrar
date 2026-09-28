@@ -1,97 +1,163 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { withSupabase } from "npm:@supabase/server@^1";
 
-const url = Deno.env.get('SUPABASE_URL')!;
-const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const admin = createClient(url, service);
-const APP_URL = 'https://webjisa.github.io/MiEspacioParaCelebrar';
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  });
+interface OwnerPayload {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  legal_name?: string | null;
+  tax_id?: string | null;
+  notes?: string | null;
 }
 
-Deno.serve(async req => {
-  let createdUserId: string | null = null;
-  try {
-    const auth = req.headers.get('Authorization') || '';
-    const token = auth.replace(/^Bearer\s+/i, '');
-    const { data: { user }, error: authError } = await admin.auth.getUser(token);
-    if (authError || !user) return json({ error: 'Sesión no válida' }, 401);
-
-    const { data: p, error: profileError } = await admin
-      .from('profiles')
-      .select('role,active')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (profileError) throw profileError;
-    if (p?.role !== 'admin' || p.active !== true) return json({ error: 'No autorizado' }, 403);
-
-    const b = await req.json();
-    const email = String(b.email || '').trim().toLowerCase();
-    const firstName = String(b.first_name || '').trim();
-    const lastName = String(b.last_name || '').trim();
-
-    if (!email || !firstName || !lastName) return json({ error: 'Nombre, apellidos y email son obligatorios.' }, 400);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'El email no tiene un formato válido.' }, 400);
-
-    const { data: invitation, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${APP_URL}/activar-cuenta.html`
-    });
-    if (inviteError) throw inviteError;
-    if (!invitation?.user) throw new Error('No se ha podido crear la invitación.');
-
-    createdUserId = invitation.user.id;
-
-    const { data: profile, error: profileInsertError } = await admin
-      .from('profiles')
-      .insert({
-        id: createdUserId,
-        email,
-        first_name: firstName,
-        last_name: lastName || null,
-        phone: String(b.phone || '').trim() || null,
-        address: String(b.address || '').trim() || null,
-        city: String(b.city || '').trim() || null,
-        postal_code: String(b.postal_code || '').trim() || null,
-        role: 'owner',
-        active: true
-      })
-      .select()
-      .single();
-
-    if (profileInsertError) throw profileInsertError;
-
-    const { error: ownerError } = await admin
-      .from('owners')
-      .insert({
-        profile_id: createdUserId,
-        legal_name: null,
-        tax_id: null,
-        active: true
-      });
-
-    if (ownerError) throw ownerError;
-
-    return json({ ok: true, invited: true, profile });
-  } catch (e) {
-    const raw = String((e as Error)?.message || e || '');
-    const lower = raw.toLowerCase();
-    let message = 'No se ha podido crear el propietario.';
-    if (lower.includes('already been registered') || lower.includes('already exists') || lower.includes('user already registered')) {
-      message = 'Ese email ya está registrado. Utiliza otro email.';
-    } else if (lower.includes('invalid email')) {
-      message = 'El email no tiene un formato válido.';
-    } else if (lower.includes('rate limit')) {
-      message = 'Se ha alcanzado temporalmente el límite de invitaciones. Inténtalo de nuevo más tarde.';
+export default {
+  fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
+    if (req.method !== "POST") {
+      return Response.json(
+        { error: "Método no permitido" },
+        { status: 405 },
+      );
     }
-    if (createdUserId) {
-      await admin.from('owners').delete().eq('profile_id', createdUserId);
-      await admin.from('profiles').delete().eq('id', createdUserId);
-      await admin.auth.admin.deleteUser(createdUserId);
+
+    try {
+      const userId = ctx.userClaims?.id;
+
+      if (!userId) {
+        return Response.json(
+          { error: "Usuario no autenticado." },
+          { status: 401 },
+        );
+      }
+
+      // Comprobar que quien realiza la operación es un administrador
+      const { data: adminProfile, error: adminProfileError } =
+        await ctx.supabaseAdmin
+          .from("profiles")
+          .select("id, role, active")
+          .eq("id", userId)
+          .maybeSingle();
+
+      if (adminProfileError) {
+        console.error(
+          "Error comprobando administrador:",
+          adminProfileError,
+        );
+
+        return Response.json(
+          { error: "No se pudo comprobar el usuario administrador." },
+          { status: 500 },
+        );
+      }
+
+      if (
+        !adminProfile ||
+        adminProfile.role !== "admin" ||
+        adminProfile.active !== true
+      ) {
+        return Response.json(
+          { error: "No tienes permisos para crear propietarios." },
+          { status: 403 },
+        );
+      }
+
+      const body: OwnerPayload = await req.json();
+
+      const email = body.email?.trim().toLowerCase();
+      const firstName = body.first_name?.trim();
+      const lastName = body.last_name?.trim();
+
+      // La contraseña NO se solicita.
+      // El propietario la establecerá mediante la invitación.
+      if (!email || !firstName || !lastName) {
+        return Response.json(
+          {
+            error:
+              "Faltan datos obligatorios: email, first_name y last_name.",
+          },
+          { status: 400 },
+        );
+      }
+
+      // Crear usuario mediante invitación.
+      // Supabase enviará al propietario el correo para activar su cuenta
+      // y establecer su propia contraseña.
+      const { data: authData, error: authError } =
+        await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(email);
+
+      if (authError) {
+        console.error(
+          "Error enviando invitación al propietario:",
+          authError,
+        );
+
+        return Response.json(
+          { error: authError.message },
+          { status: 400 },
+        );
+      }
+
+      if (!authData.user) {
+        return Response.json(
+          { error: "No se pudo crear la invitación del propietario." },
+          { status: 500 },
+        );
+      }
+
+      const newUserId = authData.user.id;
+
+      // Crear perfil y registro de propietario
+      const { data: ownerId, error: ownerError } =
+        await ctx.supabase.rpc("create_owner_profile", {
+          p_user_id: newUserId,
+          p_email: email,
+          p_first_name: firstName,
+          p_last_name: lastName,
+          p_phone: body.phone ?? null,
+          p_address: body.address ?? null,
+          p_city: body.city ?? null,
+          p_postal_code: body.postal_code ?? null,
+          p_legal_name: body.legal_name ?? null,
+          p_tax_id: body.tax_id ?? null,
+          p_notes: body.notes ?? null,
+        });
+
+      if (ownerError) {
+        console.error(
+          "Error creando profile/owner:",
+          ownerError,
+        );
+
+        // Si falla la creación del propietario, eliminar
+        // también el usuario Auth que acabamos de crear.
+        await ctx.supabaseAdmin.auth.admin.deleteUser(newUserId);
+
+        return Response.json(
+          { error: ownerError.message },
+          { status: 400 },
+        );
+      }
+
+      return Response.json(
+        {
+          success: true,
+          owner_id: ownerId,
+          user_id: newUserId,
+          email,
+          message: "Invitación enviada correctamente.",
+        },
+        { status: 201 },
+      );
+    } catch (error) {
+      console.error("Error interno:", error);
+
+      return Response.json(
+        { error: "Error interno al crear el propietario." },
+        { status: 500 },
+      );
     }
-    return json({ error: message }, 400);
-  }
-});
+  }),
+};
