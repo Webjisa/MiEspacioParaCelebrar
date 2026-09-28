@@ -262,3 +262,21 @@ Para recuperación de contraseña debe estar permitida también:
 `https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html`
 
 La Edge Function `create-owner` incluida en este proyecto debe desplegarse en Supabase antes de utilizar el alta de propietarios.
+
+## Actualización: precios diarios y paquetes por espacio
+
+Para esta versión, además de la migración FINAL-2026 ya aplicada, ejecutar una sola vez:
+
+**🗂️ GUARDAR — MIGRACION-PRECIOS-DIARIOS-Y-PAQUETES**
+
+Archivo: `supabase/MIGRACION-PRECIOS-DIARIOS-Y-PAQUETES.sql`
+
+Esta migración:
+- crea precios independientes para lunes, martes, miércoles, jueves, viernes, sábado y domingo;
+- conserva los campos antiguos de compatibilidad, pero las reservas nuevas utilizan la tabla de precios diarios;
+- permite paquetes/opciones propios de cada espacio;
+- permite grupos de selección, opciones obligatorias, precios por reserva o por día y paquetes que sustituyen el precio diario;
+- añade los cuatro espacios Castravinaria asignados inicialmente a Manu Soniluc;
+- añade sus fotografías, características, fianzas, horarios y paquetes/precios indicados en los carteles.
+
+No volver a ejecutar `FINAL-2026.sql` después de esta migración.

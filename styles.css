@@ -145,3 +145,17 @@
   .space-tile-info{padding:14px 16px 16px}
   .space-tile-info h2{font-size:23px}
 }
+
+/* Precios diarios y paquetes seleccionables */
+.package-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}
+.package-card{border:1px solid var(--line,#ddd);border-radius:18px;padding:20px;background:var(--surface,#fff)}
+.package-card h3{margin:0 0 10px;font-size:1.05rem}
+.package-card strong{display:block;font-size:1.35rem;margin-bottom:8px}
+.package-card p{margin:0;color:#666;line-height:1.5}
+.service-choice-group{display:grid;gap:8px;margin:14px 0}
+.service-choice-group>strong{font-size:.95rem;margin-bottom:3px}
+.service-option.service-unavailable{opacity:.45;text-decoration:line-through}
+.services-admin-form{align-items:end}
+.service-days{grid-column:1/-1;padding:10px 0}
+.check-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+@media (max-width:700px){.package-grid{grid-template-columns:1fr}.package-card{padding:16px}}
