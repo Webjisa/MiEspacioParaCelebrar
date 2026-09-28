@@ -714,7 +714,7 @@ returns table(id uuid,name text,description text,active boolean)
 language plpgsql security definer set search_path=public,private as $$
 begin
   if not private.is_admin() then raise exception 'No tienes permisos'; end if;
-  return query select id,name,description,active from public.service_catalog order by lower(name);
+  return query select sc.id,sc.name,sc.description,sc.active from public.service_catalog sc order by lower(sc.name);
 end; $$;
 revoke all on function public.admin_get_service_catalog() from public,anon; grant execute on function public.admin_get_service_catalog() to authenticated;
 

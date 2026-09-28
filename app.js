@@ -37,7 +37,7 @@ async function getPublicSpaces(){
   try{
     // Consulta principal separada de las relaciones para que un fallo de imágenes/features
     // no convierta el espacio en un falso ID de prueba.
-    const {data,error}=await client.from('spaces').select('id,name,city,province,latitude,longitude,address,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,conditions_text,active,admin_enabled,owner_active,active_from,active_until').eq('active',true).eq('admin_enabled',true).eq('owner_active',true).order('name');
+    const {data,error}=await client.from('spaces').select('id,name,city,province,latitude,longitude,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,conditions_text,active,admin_enabled,owner_active,active_from,active_until').eq('active',true).eq('admin_enabled',true).eq('owner_active',true).order('name');
     if(error)throw error;
     const active=(data||[]).filter(s=>isActive({active:s.active,activeFrom:s.active_from,activeUntil:s.active_until}));
     const normalized=[];
@@ -376,7 +376,7 @@ async function initAdminArea(){
  const {data:{user}}=await client.auth.getUser();if(!user){location.href='acceso.html';return;}
  const {data:profile}=await client.from('profiles').select('role,active').eq('id',user.id).maybeSingle();if(!profile||profile.role!=='admin'||!profile.active){location.href='area-privada.html';return;}
  const [spacesRes,ownersRes,bookingsRes]=await Promise.all([
-   client.from('spaces').select('id,name,city,province,active,active_from,active_until,weekday_price,friday_price,saturday_price,sunday_price,deposit,address,latitude,longitude').order('name'),
+   client.from('spaces').select('id,name,city,province,active,active_from,active_until,weekday_price,friday_price,saturday_price,sunday_price,deposit,latitude,longitude').order('name'),
    client.rpc('admin_list_owners'), client.rpc('admin_get_all_bookings')
  ]);
  if(spacesRes.error){root.innerHTML='<p class="message">No se han podido cargar los locales: '+esc(spacesRes.error.message)+'</p>';return;}
