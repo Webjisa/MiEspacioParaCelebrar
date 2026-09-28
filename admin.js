@@ -47,7 +47,7 @@
           <button data-view="spaces">Espacios</button>
           <button data-view="owners">Propietarios</button>
           <button data-view="bookings">Reservas</button>
-          <button data-view="calendar">Calendario</button>
+          <button data-view="calendar">Calendario</button><button data-view="catalog">Servicios</button><button data-view="emails">Emails</button><button data-view="surveys">Encuestas</button>
         </nav>
         <button id="adminLogout" class="admin-logout">Cerrar sesión</button>
       </aside>
@@ -68,9 +68,27 @@
     if(view==='owners') return renderOwners(root);
     if(view==='bookings') return renderBookings(root);
     if(view==='calendar') return renderCalendar(root);
+    if(view==='catalog') return renderCatalog(root);
+    if(view==='emails') return renderEmails(root);
+    if(view==='surveys') return renderSurveys(root);
     renderDashboard(root);
   }
 
+
+  async function renderCatalog(root){
+    const r=await state.client.rpc('admin_get_service_catalog');if(r.error){root.innerHTML=header('SERVICIOS','Catálogo')+`<p class="message error">${esc(r.error.message)}</p>`;return;}
+    root.innerHTML=header('SERVICIOS','Catálogo',`<button id="newCatalogService" class="btn btn-dark">+ Nuevo servicio</button>`)+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Servicio</th><th>Descripción</th><th>Estado</th><th></th></tr></thead><tbody>${(r.data||[]).map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.description||'')}</td><td>${x.active?'Activo':'Inactivo'}</td><td><button class="btn btn-light" data-cat-edit="${x.id}">Editar</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">No hay servicios.</td></tr>'}</tbody></table></div></div>`;
+    root.querySelector('#newCatalogService').onclick=()=>catalogModal(null);
+    root.querySelectorAll('[data-cat-edit]').forEach(b=>b.onclick=()=>catalogModal((r.data||[]).find(x=>x.id===b.dataset.catEdit)));
+  }
+  function catalogModal(x){
+    const m=modal(x?'Editar servicio':'Nuevo servicio',`<form class="admin-form-grid"><label>Nombre<input id="catName" value="${esc(x?.name||'')}" required></label><label>Activo<input id="catActive" type="checkbox" ${x?.active!==false?'checked':''}></label><label class="form-wide">Descripción<textarea id="catDesc">${esc(x?.description||'')}</textarea></label></form><div class="modal-actions"><button id="catSave" class="btn btn-dark">Guardar</button><button class="btn btn-light" data-close>Cerrar</button></div><p class="admin-message"></p>`);m.querySelector('[data-close]').onclick=()=>m.remove();m.querySelector('#catSave').onclick=async()=>{const q=x?await state.client.from('service_catalog').update({name:val(m,'#catName'),description:val(m,'#catDesc')||null,active:m.querySelector('#catActive').checked,updated_at:new Date().toISOString()}).eq('id',x.id):await state.client.from('service_catalog').insert({name:val(m,'#catName'),description:val(m,'#catDesc')||null,active:m.querySelector('#catActive').checked});if(q.error){toast(m,q.error.message,true);return;}m.remove();renderView('catalog');};
+  }
+  async function renderEmails(root){
+    root.innerHTML=header('EMAILS','Historial de comunicaciones',`<select id="emailCat"><option value="">Todos</option><option value="espacios">Espacios</option><option value="reservas">Reservas</option><option value="encuestas">Encuestas</option></select>`)+`<div class="admin-card"><div id="emailRows"><p class="muted">Cargando…</p></div></div>`;
+    const paint=async()=>{const r=await state.client.rpc('admin_get_email_history',{p_category:root.querySelector('#emailCat').value||null});if(r.error){root.querySelector('#emailRows').innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}root.querySelector('#emailRows').innerHTML=`<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Fecha</th><th>Categoría</th><th>Tipo</th><th>Destinatario</th><th>Estado</th><th>Intentos</th><th>Error</th></tr></thead><tbody>${(r.data||[]).map(x=>`<tr><td>${esc(new Date(x.created_at).toLocaleString('es-ES'))}</td><td>${esc(x.category)}</td><td>${esc(x.communication_type)}</td><td>${esc(x.recipient_email)}</td><td>${esc(x.status)}</td><td>${x.attempts}</td><td>${esc(x.last_error||'')}</td></tr>`).join('')||'<tr><td colspan="7" class="muted">Sin comunicaciones.</td></tr>'}</tbody></table></div>`;};root.querySelector('#emailCat').onchange=paint;await paint();
+  }
+  async function renderSurveys(root){const r=await state.client.rpc('admin_get_surveys');root.innerHTML=header('ENCUESTAS','Respuestas')+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Espacio</th><th>Cliente</th><th>General</th><th>Instalaciones</th><th>Limpieza</th><th>Equipamiento</th><th>Mantenimiento</th><th>Incidencia</th><th>Comentarios</th></tr></thead><tbody>${r.error?`<tr><td colspan="9" class="message error">${esc(r.error.message)}</td></tr>`:(r.data||[]).map(x=>`<tr><td>${esc(x.space_name)}</td><td>${esc(x.customer_name)}</td><td>${x.overall??'—'}</td><td>${x.facilities??'—'}</td><td>${x.cleaning??'—'}</td><td>${x.equipment??'—'}</td><td>${x.maintenance??'—'}</td><td>${x.breakdown?'Sí':'No'}</td><td>${esc(x.comments||'')}</td></tr>`).join('')||'<tr><td colspan="9" class="muted">Sin encuestas.</td></tr>'}</tbody></table></div></div>`;}
   function header(kicker,title,action=''){
     return `<div class="admin-view-head"><div><p class="eyebrow">${kicker}</p><h1>${title}</h1></div>${action}</div>`;
   }
@@ -157,7 +175,7 @@
   }
 
   async function spaceTools(s){
-    const m=modal(`Gestionar · ${esc(s.name)}`,`<div class="tool-tabs"><button class="active" data-tool="photos">Fotos</button><button data-tool="features">Características</button><button data-tool="blocks">Bloqueos</button></div><div id="toolContent"></div>`);
+    const m=modal(`Gestionar · ${esc(s.name)}`,`<div class="tool-tabs"><button class="active" data-tool="photos">Fotos</button><button data-tool="features">Características</button><button data-tool="services">Servicios</button><button data-tool="blocks">Bloqueos</button></div><div id="toolContent"></div>`);
     m.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{m.querySelectorAll('[data-tool]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTool(m,s,b.dataset.tool);});
     renderTool(m,s,'photos');
   }
@@ -166,6 +184,7 @@
     const box=m.querySelector('#toolContent');box.innerHTML='<p class="muted">Cargando…</p>';
     if(tool==='photos') return photosTool(m,s,box);
     if(tool==='features') return featuresTool(m,s,box);
+    if(tool==='services') return servicesTool(m,s,box);
     return blocksTool(m,s,box);
   }
 
@@ -189,6 +208,16 @@
     box.querySelector('#savePhoto').onclick=async()=>{const r=await state.client.rpc('admin_update_space_image',{p_image_id:img.id,p_image_url:img.image_url,p_alt_text:val(box,'#photoAlt')||s.name,p_is_main:box.querySelector('#photoMain').checked,p_sort_order:Number(val(box,'#photoOrder')||0)});if(r.error){toast(box,r.error.message,true);return;}await renderTool(m,s,'photos');};box.querySelector('#backPhotos').onclick=()=>renderTool(m,s,'photos');
   }
 
+
+  async function servicesTool(m,s,box){
+    const [catalog,attached]=await Promise.all([state.client.rpc('admin_get_service_catalog'),state.client.from('space_services').select('id,service_id,included,price,active,service_catalog(name,description)').eq('space_id',s.id)]);
+    if(catalog.error||attached.error){box.innerHTML=`<p class="message error">${esc(catalog.error?.message||attached.error?.message)}</p>`;return;}
+    const rows=(attached.data||[]).sort((a,b)=>String(a.service_catalog?.name||'').localeCompare(String(b.service_catalog?.name||''),'es'));
+    box.innerHTML=`<div class="feature-add"><select id="serviceCatalog">${(catalog.data||[]).filter(x=>x.active).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input id="servicePrice" type="number" min="0" step="0.01" placeholder="Precio"><label class="check-row"><input id="serviceIncluded" type="checkbox"> Incluido</label><button id="addService" class="btn btn-dark">Añadir / actualizar</button></div><div class="feature-admin-list">${rows.map(x=>`<div><span><strong>${esc(x.service_catalog?.name||'')}</strong> · ${x.included?'Incluido':money(x.price)}</span><span><button class="btn btn-light" data-service-toggle="${x.id}">${x.active?'Desactivar':'Activar'}</button><button class="btn btn-light" data-service-delete="${x.id}">Quitar</button></span></div>`).join('')||'<p class="muted">No hay servicios configurados.</p>'}</div><p class="admin-message"></p>`;
+    box.querySelector('#addService').onclick=async()=>{const q=await state.client.rpc('admin_save_space_service',{p_space_id:s.id,p_service_id:box.querySelector('#serviceCatalog').value,p_included:box.querySelector('#serviceIncluded').checked,p_price:Number(box.querySelector('#servicePrice').value||0),p_active:true});if(q.error){toast(box,q.error.message,true);return;}await renderTool(m,s,'services');};
+    box.querySelectorAll('[data-service-toggle]').forEach(b=>b.onclick=async()=>{const x=rows.find(y=>y.id===b.dataset.serviceToggle);const q=await state.client.rpc('admin_save_space_service',{p_space_id:s.id,p_service_id:x.service_id,p_included:x.included,p_price:Number(x.price||0),p_active:!x.active});if(q.error){alert(q.error.message);return;}await renderTool(m,s,'services');});
+    box.querySelectorAll('[data-service-delete]').forEach(b=>b.onclick=async()=>{const q=await state.client.rpc('admin_remove_space_service',{p_space_service_id:b.dataset.serviceDelete});if(q.error){alert(q.error.message);return;}await renderTool(m,s,'services');});
+  }
   async function featuresTool(m,s,box){
     const r=await state.client.rpc('admin_get_space_features',{p_space_id:s.id});if(r.error){box.innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}
     box.innerHTML=`<div class="feature-add"><input id="newFeature" placeholder="Nueva característica"><button id="addFeature" class="btn btn-dark">Añadir</button></div><div class="feature-admin-list">${(r.data||[]).map((x,i)=>`<div><span>${esc(x.feature)}</span><span><button class="btn btn-light" data-feature-edit="${x.id}">Editar</button><button class="btn btn-light" data-feature-delete="${x.id}">Eliminar</button></span></div>`).join('')||'<p class="muted">No hay características.</p>'}</div><p class="admin-message"></p>`;

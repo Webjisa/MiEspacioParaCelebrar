@@ -1,58 +1,55 @@
-# MiEspacioParaCelebrar · v23
+# MiEspacioParaCelebrar — versión definitiva 2026
 
-Versión consolidada para acercar el proyecto a la versión final.
+Portal web para consultar espacios privados de celebración y enviar solicitudes de reserva a sus propietarios.
 
-## Qué incluye
-- Web pública de espacios activos.
-- Fichas individuales con galería, características, precios, condiciones, disponibilidad y mapa.
-- Solicitud de reserva sin pago online ni almacenamiento de datos de pago.
-- Retención de fechas durante 72 horas y confirmación/rechazo por propietario o administrador.
-- Cálculo centralizado de alquiler, limpieza y fianza sin guardar importes de reserva en `bookings`.
-- Área privada de propietarios con calendario, historial y acciones sobre solicitudes.
-- Panel de administración para espacios, propietarios, fotografías, características, fechas bloqueadas, reservas y contenido.
-- Mapas generales e individuales.
-- Menú móvil y calendario de disponibilidad adaptado a móvil.
-- Textos legales base.
-- Display físico NFC + QR reutilizable por espacio.
+## Arquitectura
 
-## Display físico NFC + QR
-Cada local puede disponer de un pequeño display de sobremesa impreso en 3D. La etiqueta NFC se coloca oculta detrás de la placa y el QR queda visible. Ambos llevan a la ficha del espacio y a su disponibilidad.
+- Frontend estático: GitHub Pages.
+- Datos, autenticación, RLS y RPC: Supabase.
+- Correo transaccional: Resend mediante Edge Functions.
+- Mapas: Leaflet/OpenStreetMap.
+- Clientes: sin cuenta.
+- Propietarios y administración: acceso privado.
+- Pagos: fuera de la plataforma; cliente y propietario acuerdan directamente las condiciones económicas.
 
-Archivos: `display-nfc/`
-- `display_nfc_base.stl`
-- `display_nfc_plate.stl`
-- `display_nfc.scad`
-- `display_nfc.stl`
-- `tarjeta-display-la-nube.png`
-- `qr-la-nube.png`
-- `render-concepto-la-nube.png`
+## Funcionalidades principales
 
-La etiqueta NFC no contiene datos personales; únicamente una URL NDEF. El destino puede evolucionar sin cambiar físicamente la etiqueta.
+- Búsqueda por fecha.
+- Listado de todos los espacios públicos activos.
+- Ficha individual con fotos, características, servicios, precios, condiciones, mapa y disponibilidad.
+- Solicitudes de reserva con retención de 72 horas.
+- Revisión final antes de enviar la solicitud.
+- Snapshot de precios, servicios y condiciones en el momento de solicitar.
+- Área privada de propietarios.
+- Activación/desactivación operativa por propietario.
+- Administración de propietarios y espacios.
+- Administración de fotografías y características.
+- Catálogo de servicios y servicios ofrecidos por espacio.
+- Bloqueos de fechas.
+- Modificación y cancelación de reservas confirmadas.
+- Historial de emails.
+- Encuestas de una sola respuesta.
+- Limpieza automática de datos según los plazos definidos.
+- Soporte físico NFC/QR conservado en `display-nfc/`.
 
-## Supabase
-El archivo que hay que revisar/ejecutar para esta versión es:
+## Puesta en marcha
 
-`supabase/v23-final.sql`
+Seguir **`DEPLOY-FINAL.md`** en el orden indicado.
 
-Está preparado para ser idempotente en las partes de esquema y funciones: añade los campos de ubicación/actividad que falten, refuerza las políticas necesarias para administración y deja disponibles las funciones del panel.
+La SQL definitiva es:
 
-**No ejecutes todos los SQL antiguos otra vez a ciegas.** Para la actualización a v23 utiliza el SQL final indicado y conserva los anteriores como histórico.
+`supabase/FINAL-2026.sql`
 
-## Pendiente antes de considerarlo producción definitiva
-1. Conectar el proveedor de correo real y desplegar sus Edge Functions.
-2. Completar identidad y domicilio del responsable en los textos legales.
-3. Ejecutar el SQL final en Supabase.
-4. Conectar GitHub y publicar esta versión.
-5. Hacer la prueba integral móvil/ordenador: alta de propietario → alta de espacio → fotos → disponibilidad → solicitud → aceptación/rechazo → bloqueo/desbloqueo → display NFC/QR.
+### Regla SQL del proyecto
+
+**🗂️ GUARDAR — FINAL-2026.sql**
+
+Debe conservarse como la SQL consolidada de la versión final. Las SQL anteriores de `supabase/` se mantienen como histórico y no deben ejecutarse una detrás de otra como procedimiento de instalación.
 
 ## Seguridad
-El navegador contiene únicamente la clave pública de Supabase. Las operaciones sensibles se realizan mediante RLS y funciones `security definer`; nunca se debe introducir una `service_role` key en GitHub Pages.
 
-## V26
-- Corrección de navegación del calendario de reservas: las flechas de mes ya no cierran el calendario.
-- Panel de administración basado en las RPC V23 reales.
-- Las coordenadas se pueden localizar mediante dirección, sin almacenar una columna de dirección en `spaces`.
-- Estructura del paquete renombrada a `MiEspacioParaCelebrar-v26`.
+No guardar secretos en el frontend. La service role key de Supabase y la API key de Resend se configuran exclusivamente como secretos de Edge Functions.
 
-## V27
-Corrección del calendario de reservas: navegación mensual con manejadores directos en las flechas y renovación de cache-busting a `?v=27`.
+## Publicación
+
+El proyecto está preparado para GitHub Pages. No se incluye ninguna afirmación de que la versión esté ya desplegada: primero hay que sustituir el contenido del repositorio y completar la configuración de Supabase/Resend siguiendo `DEPLOY-FINAL.md`.
