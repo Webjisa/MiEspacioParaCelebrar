@@ -239,3 +239,26 @@ La clave pública de Supabase que aparece en `supabase-config.js` puede estar en
 ## Nota legal
 
 Los textos de privacidad y uso ya reflejan el funcionamiento definido del proyecto, pero la identidad y domicilio del responsable deben completarse antes de la publicación definitiva y conviene revisar el conjunto de textos con asesoramiento jurídico.
+
+### 17. Alta de propietarios mediante invitación
+
+El alta de propietarios ya no utiliza una contraseña inicial creada por administración.
+
+Flujo definitivo:
+
+1. Administración → Propietarios → Añadir propietario.
+2. Se introducen únicamente los datos necesarios: nombre, apellidos, email, teléfono, dirección, localidad y código postal.
+3. La función `create-owner` crea la cuenta y envía una invitación.
+4. El propietario abre el enlace recibido.
+5. `activar-cuenta.html` permite establecer su propia contraseña.
+6. Después accede a `area-privada.html`.
+
+En Supabase → Authentication → URL Configuration debe estar permitida esta URL de redirección:
+
+`https://webjisa.github.io/MiEspacioParaCelebrar/activar-cuenta.html`
+
+Para recuperación de contraseña debe estar permitida también:
+
+`https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html`
+
+La Edge Function `create-owner` incluida en este proyecto debe desplegarse en Supabase antes de utilizar el alta de propietarios.
