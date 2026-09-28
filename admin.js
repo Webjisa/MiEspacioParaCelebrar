@@ -267,7 +267,7 @@
 
   async function refresh(){await loadAll(state.client);}
 
-  window.initAdminArea=async function(){
+  window.initAdminPanel=async function(){
     const root=document.querySelector('#adminArea');if(!root)return;
     root.innerHTML='<p class="muted">Comprobando acceso…</p>';
     try{const c=await requireAdmin();if(!c)return;await loadAll(c);shell();renderView('dashboard');}
