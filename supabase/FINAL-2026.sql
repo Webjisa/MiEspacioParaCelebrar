@@ -152,7 +152,7 @@ for select to anon, authenticated using (active = true);
 
 drop policy if exists "Admins manage service catalog" on public.service_catalog;
 create policy "Admins manage service catalog" on public.service_catalog
-for all to authenticated using (public.private.is_admin()) with check (public.private.is_admin());
+for all to authenticated using (private.is_admin()) with check (private.is_admin());
 
 drop policy if exists "Public can view offered services" on public.space_services;
 create policy "Public can view offered services" on public.space_services
@@ -168,19 +168,19 @@ for select to anon, authenticated using (
 
 drop policy if exists "Admins manage offered services" on public.space_services;
 create policy "Admins manage offered services" on public.space_services
-for all to authenticated using (public.private.is_admin()) with check (public.private.is_admin());
+for all to authenticated using (private.is_admin()) with check (private.is_admin());
 
 drop policy if exists "Admins read change log" on public.change_log;
 create policy "Admins read change log" on public.change_log
-for select to authenticated using (public.private.is_admin());
+for select to authenticated using (private.is_admin());
 
 drop policy if exists "Admins read email queue" on public.email_queue;
 create policy "Admins read email queue" on public.email_queue
-for select to authenticated using (public.private.is_admin());
+for select to authenticated using (private.is_admin());
 
 drop policy if exists "Admins read surveys" on public.surveys;
 create policy "Admins read surveys" on public.surveys
-for select to authenticated using (public.private.is_admin());
+for select to authenticated using (private.is_admin());
 
 -- ============================================================
 -- 6. VISIBILIDAD PÚBLICA DEFINITIVA
@@ -660,7 +660,11 @@ begin
   return query
   select b.id,b.space_id,s.name,b.customer_name,b.customer_email,b.customer_phone,b.start_date,b.end_date,b.total_days,b.cleaning_requested,b.booking_status,b.expires_at,b.created_at,
     coalesce((b.pricing_snapshot->>'rental_total')::numeric,0),coalesce((b.pricing_snapshot->>'cleaning_total')::numeric,0),coalesce((b.pricing_snapshot->>'deposit')::numeric,0),coalesce((b.pricing_snapshot->>'grand_total')::numeric,0),b.services_snapshot,b.customer_notes,b.conditions_snapshot
-  from public.bookings b join public.spaces s on s.id=b.space_id where s.owner_id=private.current_owner_id() order by b.created_at desc;
+  from public.bookings b
+  join public.spaces s on s.id=b.space_id
+  where s.owner_id=private.current_owner_id()
+    and b.end_date >= current_date
+  order by b.start_date asc, b.end_date asc, b.created_at asc;
 end; $$;
 revoke all on function public.get_owner_bookings() from public,anon; grant execute on function public.get_owner_bookings() to authenticated;
 
