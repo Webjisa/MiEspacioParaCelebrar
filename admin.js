@@ -246,14 +246,178 @@
 
 
   async function servicesTool(m,s,box){
-    const [catalog,attached]=await Promise.all([state.client.rpc('admin_get_service_catalog'),state.client.rpc('admin_get_space_services',{p_space_id:s.id})]);
-    if(catalog.error||attached.error){box.innerHTML=`<p class="message error">${esc(catalog.error?.message||attached.error?.message)}</p>`;return;}
-    const rows=(attached.data||[]).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es'));
-    box.innerHTML=`<div class="feature-add services-admin-form"><select id="serviceCatalog">${(catalog.data||[]).filter(x=>x.active).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input id="servicePrice" type="number" min="0" step="0.01" placeholder="Precio"><select id="serviceKind"><option value="extra">Servicio adicional</option><option value="package">Paquete / opción</option></select><label class="check-row"><input id="serviceIncluded" type="checkbox"> Incluido</label><label class="check-row"><input id="serviceRequired" type="checkbox"> Elección obligatoria</label><label class="check-row"><input id="serviceReplace" type="checkbox"> Sustituye el precio diario</label><div class="service-days"><span class="micro">Días permitidos para paquetes (vacío = todos)</span><div class="check-grid">${[[1,'L'],[2,'M'],[3,'X'],[4,'J'],[5,'V'],[6,'S'],[7,'D']].map(([n,l])=>`<label class="check-row"><input class="service-day" type="checkbox" value="${n}"> ${l}</label>`).join('')}</div></div><button id="addService" class="btn btn-dark">Añadir / actualizar</button></div><p class="micro">Los paquetes se agrupan como una única elección. Un paquete puede sustituir el precio diario del espacio.</p><div class="feature-admin-list">${rows.map(x=>`<div><span><strong>${esc(x.name||'')}</strong> · ${x.included?'Incluido':money(x.price)}${x.selection_group?` · ${x.selection_group==='paquete'?'Paquete':'Grupo '+esc(x.selection_group)}`:''}</span><span><button class="btn btn-light" data-service-toggle="${x.id}">${x.active?'Desactivar':'Activar'}</button><button class="btn btn-light" data-service-delete="${x.id}">Quitar</button></span></div>`).join('')||'<p class="muted">No hay servicios configurados.</p>'}</div><p class="admin-message"></p>`;
-    const save=async(active=true)=>{const kind=box.querySelector('#serviceKind').value;const allowed=kind==='package'?[...box.querySelectorAll('.service-day:checked')].map(x=>Number(x.value)):null;const q=await state.client.rpc('admin_save_space_service_v2',{p_space_id:s.id,p_service_id:box.querySelector('#serviceCatalog').value,p_included:box.querySelector('#serviceIncluded').checked,p_price:Number(box.querySelector('#servicePrice').value||0),p_active:active,p_selection_group:kind==='package'?'paquete':null,p_selection_required:kind==='package'&&box.querySelector('#serviceRequired').checked,p_replaces_rental:kind==='package'&&box.querySelector('#serviceReplace').checked,p_price_mode:'fixed',p_allowed_days:allowed?.length?allowed:null,p_depends_on_service_id:null});if(q.error){toast(box,q.error.message,true);return false;}return true;};
-    box.querySelector('#addService').onclick=async()=>{if(await save(true))await renderTool(m,s,'services');};
-    box.querySelectorAll('[data-service-toggle]').forEach(b=>b.onclick=async()=>{const x=rows.find(y=>y.id===b.dataset.serviceToggle);const q=await state.client.rpc('admin_save_space_service_v2',{p_space_id:s.id,p_service_id:x.service_id,p_included:x.included,p_price:Number(x.price||0),p_active:!x.active,p_selection_group:x.selection_group,p_selection_required:x.selection_required,p_replaces_rental:x.replaces_rental,p_price_mode:x.price_mode||'fixed',p_allowed_days:x.allowed_days||null,p_depends_on_service_id:x.depends_on_service_id||null});if(q.error){alert(q.error.message);return;}await renderTool(m,s,'services');});
-    box.querySelectorAll('[data-service-delete]').forEach(b=>b.onclick=async()=>{const q=await state.client.rpc('admin_remove_space_service',{p_space_service_id:b.dataset.serviceDelete});if(q.error){alert(q.error.message);return;}await renderTool(m,s,'services');});
+    const r=await state.client.rpc('admin_get_space_services_custom',{p_space_id:s.id});
+    if(r.error){box.innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}
+    const rows=r.data||[];
+
+    const dayLabels=[[1,'L'],[2,'M'],[3,'X'],[4,'J'],[5,'V'],[6,'S'],[7,'D']];
+    const daysText=a=>a&&a.length?dayLabels.filter(([n])=>a.includes(n)).map(([,l])=>l).join(' · '):'Todos los días';
+    const grouped={};
+    const singles=[];
+    rows.forEach(x=>{
+      if(x.selection_group) (grouped[x.selection_group] ||= []).push(x);
+      else singles.push(x);
+    });
+
+    const serviceCard=x=>`<article class="service-config-card" style="border:1px solid #e1e1e1;border-radius:18px;padding:18px 20px;margin-bottom:12px;background:#fff;">
+      <div style="display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="min-width:220px;flex:1;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <strong style="font-size:18px;">${esc(x.name)}</strong>
+            <span class="status ${x.active?'status-confirmed':'status-off'}">${x.active?'Activo':'Inactivo'}</span>
+          </div>
+          ${x.description?`<p style="margin:7px 0;color:#666;">${esc(x.description)}</p>`:''}
+          <div style="display:flex;gap:14px;flex-wrap:wrap;color:#555;font-size:14px;">
+            <span><strong>${x.included?'Incluido':money(x.price)}</strong>${!x.included&&x.price_mode==='per_day'?' / día':''}</span>
+            <span>${daysText(x.allowed_days)}</span>
+            ${x.replaces_rental?'<span>Alternativa al precio del alquiler</span>':''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-light" data-service-edit="${x.id}">Editar</button>
+          <button class="btn btn-light" data-service-toggle="${x.id}">${x.active?'Desactivar':'Activar'}</button>
+          <button class="btn btn-light" data-service-delete="${x.id}">Eliminar</button>
+        </div>
+      </div>
+    </article>`;
+
+    const groupCard=(name,items)=>`article class="service-group-card" style="border:1px solid #d8d8d8;border-radius:20px;padding:20px;margin-bottom:16px;background:#fafafa;">
+      <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;">
+        <div>
+          <p class="eyebrow" style="margin:0 0 5px;">GRUPO DE OPCIONES</p>
+          <h3 style="margin:0;font-size:20px;">${esc(name)}</h3>
+          <p style="margin:6px 0 0;color:#666;">El cliente puede elegir como máximo una opción de este grupo.</p>
+        </div>
+        <button class="btn btn-dark" data-group-add="${esc(name)}">+ Añadir opción</button>
+      </div>
+      ${items.map(serviceCard).join('')}
+    </article>`;
+
+    box.innerHTML=`<div class="services-redesign" style="max-width:1050px;">
+      <div style="display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px;">
+        <div>
+          <p class="eyebrow">SERVICIOS DEL ESPACIO</p>
+          <h2 style="margin:0 0 6px;">Servicios y opciones</h2>
+          <p class="micro" style="max-width:700px;margin:0;">Añade extras, servicios incluidos o grupos de opciones. Los precios y condiciones se configuran directamente para este espacio.</p>
+        </div>
+        <button id="addServiceNew" class="btn btn-dark">＋ Añadir servicio</button>
+      </div>
+
+      <div class="admin-card" style="padding:16px 18px;margin-bottom:20px;">
+        <strong>¿Cómo funcionan los grupos?</strong>
+        <p class="micro" style="margin:6px 0 0;">Si varias opciones pertenecen al mismo grupo, el cliente solo puede escoger una. Por ejemplo: <strong>1 freidora · 30 €</strong> o <strong>2 freidoras · 50 €</strong>. Si elige dos freidoras, se cobran 50 €, no 30 € + 50 €.</p>
+      </div>
+
+      ${Object.entries(grouped).map(([g,items])=>groupCard(g,items)).join('')}
+      ${singles.length?`<div><p class="eyebrow">SERVICIOS INDEPENDIENTES</p>${singles.map(serviceCard).join('')}</div>`:''}
+      ${!rows.length?`<div class="admin-card" style="padding:28px;text-align:center;"><h3>Aún no hay servicios configurados</h3><p class="muted">Añade el primero con el botón «Añadir servicio».</p></div>`:''}
+      <p class="admin-message"></p>
+    </div>`;
+
+    const openEditor=(x=null,groupName='')=>{
+      const days=x?.allowed_days||[];
+      const m=modal(x?'Editar servicio':'Añadir servicio',`<form id="serviceForm" class="admin-form-grid">
+        <label class="form-wide">Nombre del servicio u opción<input id="serviceName" required value="${esc(x?.name||'')}" placeholder="Ej.: Uso de cocina, 1 freidora, 2 freidoras…"></label>
+        <label class="form-wide">Descripción<textarea id="serviceDescription" placeholder="Explica brevemente qué incluye.">${esc(x?.description||'')}</textarea></label>
+
+        <div class="form-wide" style="padding:16px;border:1px solid #e2e2e2;border-radius:16px;">
+          <strong>Tipo de servicio</strong>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;">
+            <label class="check-row"><input type="radio" name="serviceType" value="single" ${!x?.selection_group?'checked':''}> Servicio independiente</label>
+            <label class="check-row"><input type="radio" name="serviceType" value="group" ${x?.selection_group?'checked':''}> Opción dentro de un grupo</label>
+          </div>
+          <div id="groupFields" style="margin-top:12px;${x?.selection_group?'':'display:none;'}">
+            <label>Nombre del grupo<input id="groupName" value="${esc(x?.selection_group||groupName)}" placeholder="Ej.: Freidoras"></label>
+            <label class="check-row" style="margin-top:10px;"><input id="groupRequired" type="checkbox" ${x?.selection_required?'checked':''}> El cliente debe elegir una opción de este grupo</label>
+          </div>
+        </div>
+
+        <label>Precio (€)<input id="servicePrice" type="number" min="0" step="0.01" value="${x?.included?'':(x?.price??'')}" placeholder="0,00"></label>
+        <label>Forma de cobro<select id="priceMode">
+          <option value="fixed" ${x?.price_mode!=='per_day'?'selected':''}>Una vez por reserva</option>
+          <option value="per_day" ${x?.price_mode==='per_day'?'selected':''}>Por día de reserva</option>
+        </select></label>
+
+        <div class="form-wide" style="padding:16px;border:1px solid #e2e2e2;border-radius:16px;">
+          <strong>Disponibilidad</strong>
+          <p class="micro" style="margin:5px 0 10px;">Si no marcas ningún día, estará disponible todos los días.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">${dayLabels.map(([n,l])=>`<label class="check-row"><input class="service-day-new" type="checkbox" value="${n}" ${days.includes(n)?'checked':''}> ${l}</label>`).join('')}</div>
+        </div>
+
+        <label class="form-wide check-row"><input id="serviceIncluded" type="checkbox" ${x?.included?'checked':''}> Está incluido en el alquiler y no tiene coste adicional</label>
+
+        <details class="form-wide" style="padding:12px 0;">
+          <summary style="cursor:pointer;font-weight:600;">Opciones avanzadas</summary>
+          <div style="padding-top:14px;">
+            <label class="check-row"><input id="serviceReplace" type="checkbox" ${x?.replaces_rental?'checked':''}> Esta opción sustituye el precio diario del alquiler</label>
+          </div>
+        </details>
+      </form>
+      <div class="modal-actions"><button id="saveServiceNew" class="btn btn-dark">Guardar servicio</button><button class="btn btn-light" data-close>Cerrar</button></div><p class="admin-message"></p>`);
+
+      m.querySelector('[data-close]').onclick=()=>m.remove();
+
+      const sync=()=>{
+        const group=m.querySelector('input[name="serviceType"]:checked')?.value==='group';
+        m.querySelector('#groupFields').style.display=group?'block':'none';
+        if(!group)m.querySelector('#groupName').value='';
+      };
+      m.querySelectorAll('input[name="serviceType"]').forEach(r=>r.onchange=sync);
+      m.querySelector('#serviceIncluded').onchange=()=>{
+        const inc=m.querySelector('#serviceIncluded').checked;
+        m.querySelector('#servicePrice').disabled=inc;
+        if(inc)m.querySelector('#servicePrice').value='';
+      };
+      m.querySelector('#serviceIncluded').dispatchEvent(new Event('change'));
+
+      m.querySelector('#saveServiceNew').onclick=async()=>{
+        const name=val(m,'#serviceName');
+        const group=m.querySelector('input[name="serviceType"]:checked')?.value==='group';
+        const groupNameValue=group?val(m,'#groupName'):null;
+        const included=m.querySelector('#serviceIncluded').checked;
+        const price=included?0:Number(val(m,'#servicePrice')||0);
+        const allowed=[...m.querySelectorAll('.service-day-new:checked')].map(x=>Number(x.value));
+        if(!name){toast(m,'Indica el nombre del servicio.',true);return;}
+        if(group&&!groupNameValue){toast(m,'Indica el nombre del grupo.',true);return;}
+        if(!included&&!Number.isFinite(price)){toast(m,'El precio no es válido.',true);return;}
+        const q=await state.client.rpc('admin_save_space_service_custom',{
+          p_space_id:s.id,
+          p_space_service_id:x?.id||null,
+          p_name:name,
+          p_description:val(m,'#serviceDescription')||null,
+          p_included:included,
+          p_price:price,
+          p_active:x?.active!==false,
+          p_selection_group:group?groupNameValue:null,
+          p_selection_required:group&&m.querySelector('#groupRequired').checked,
+          p_replaces_rental:m.querySelector('#serviceReplace').checked,
+          p_price_mode:val(m,'#priceMode'),
+          p_allowed_days:allowed.length?allowed:null
+        });
+        if(q.error){toast(m,q.error.message,true);return;}
+        m.remove();
+        const toolModal=document.querySelector('.admin-modal');
+        if(toolModal) await renderTool(toolModal,s,'services');
+      };
+    };
+
+    // Helper: renderTool needs the original space-management modal. Re-open it if editor closes.
+    box.querySelector('#addServiceNew').onclick=()=>openEditor();
+    box.querySelectorAll('[data-group-add]').forEach(b=>b.onclick=()=>openEditor(null,b.dataset.groupAdd));
+    box.querySelectorAll('[data-service-edit]').forEach(b=>b.onclick=()=>{
+      const x=rows.find(y=>y.id===b.dataset.serviceEdit); if(x) openEditor(x);
+    });
+    box.querySelectorAll('[data-service-toggle]').forEach(b=>b.onclick=async()=>{
+      const q=await state.client.rpc('admin_set_space_service_active',{p_space_service_id:b.dataset.serviceToggle,p_active:b.textContent.trim()==='Activar'});
+      if(q.error){alert(q.error.message);return;}
+      await renderTool(document.querySelector('.admin-modal'),s,'services');
+    });
+    box.querySelectorAll('[data-service-delete]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('¿Eliminar este servicio u opción?'))return;
+      const q=await state.client.rpc('admin_delete_space_service_custom',{p_space_service_id:b.dataset.serviceDelete});
+      if(q.error){alert(q.error.message);return;}
+      await renderTool(document.querySelector('.admin-modal'),s,'services');
+    });
   }
   async function featuresTool(m,s,box){
     const r=await state.client.rpc('admin_get_space_features',{p_space_id:s.id});if(r.error){box.innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}
@@ -271,7 +435,7 @@
   }
 
   function renderOwners(root){
-    root.innerHTML=header('PROPIETARIOS','Propietarios',`<button id="newOwner" class="btn btn-dark">+ Añadir propietario</button>`)+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Propietario</th><th>Email</th><th>Teléfono</th><th>Espacios</th><th>Estado</th><th></th></tr></thead><tbody>${state.owners.length?state.owners.map(o=>`<tr><td><strong>${esc(`${o.first_name||''} ${o.last_name||''}`.trim()||'Sin nombre')}</strong></td><td>${esc(o.email||'')}</td><td>${esc(o.phone||'—')}</td><td>${state.spaces.filter(s=>s.owner_id===o.id).length}</td><td><span class="status ${o.active?'status-confirmed':'status-off'}">${o.active?'Activo':'Inactivo'}</span></td><td><button class="btn btn-light" data-owner-edit="${o.profile_id}">Editar</button> <button class="btn btn-light owner-resend-btn" data-owner-resend="${o.id}" style="display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;padding:10px 14px;border:1px solid #d9d9d9;border-radius:999px;background:#fff;color:#222;font:inherit;font-weight:600;line-height:1.2;cursor:pointer;">✉️ Reenviar invitación</button> <button class="btn btn-light" data-owner-toggle="${o.id}" data-active="${o.active}">${o.active?'Desactivar':'Activar'}</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">No hay propietarios.</td></tr>'}</tbody></table></div></div><p class="admin-message"></p>`;
+    root.innerHTML=header('PROPIETARIOS','Propietarios',`<button id="newOwner" class="btn btn-dark">+ Añadir propietario</button>`)+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Propietario</th><th>Email</th><th>Teléfono</th><th>Espacios</th><th>Estado</th><th></th></tr></thead><tbody>${state.owners.length?state.owners.map(o=>`<tr><td><strong>${esc(`${o.first_name||''} ${o.last_name||''}`.trim()||'Sin nombre')}</strong></td><td>${esc(o.email||'')}</td><td>${esc(o.phone||'—')}</td><td>${state.spaces.filter(s=>s.owner_id===o.id).length}</td><td><span class="status ${o.active?'status-confirmed':'status-off'}">${o.active?'Activo':'Inactivo'}</span></td><td><button class="btn btn-light" data-owner-edit="${o.profile_id}">Editar</button> <button class="btn btn-light owner-resend-btn" data-owner-resend="${o.id}" style="display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;padding:10px 14px;border:1px solid #d9d9d9;border-radius:999px;background:#fff;color:#222;font:inherit;font-weight:600;line-height:1.2;cursor:pointer;">✉️ Enviar recuperación de contraseña</button> <button class="btn btn-light" data-owner-toggle="${o.id}" data-active="${o.active}">${o.active?'Desactivar':'Activar'}</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">No hay propietarios.</td></tr>'}</tbody></table></div></div><p class="admin-message"></p>`;
     root.querySelector('#newOwner').onclick=()=>ownerModal(null);
     root.querySelectorAll('[data-owner-edit]').forEach(b=>b.onclick=()=>ownerModal(state.owners.find(o=>o.profile_id===b.dataset.ownerEdit)));
     root.querySelectorAll('[data-owner-resend]').forEach(b=>b.onclick=()=>resendOwnerInvitation(b.dataset.ownerResend));
