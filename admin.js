@@ -271,10 +271,51 @@
   }
 
   function renderOwners(root){
-    root.innerHTML=header('PROPIETARIOS','Propietarios',`<button id="newOwner" class="btn btn-dark">+ Añadir propietario</button>`)+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Propietario</th><th>Email</th><th>Teléfono</th><th>Espacios</th><th>Estado</th><th></th></tr></thead><tbody>${state.owners.length?state.owners.map(o=>`<tr><td><strong>${esc(`${o.first_name||''} ${o.last_name||''}`.trim()||'Sin nombre')}</strong></td><td>${esc(o.email||'')}</td><td>${esc(o.phone||'—')}</td><td>${state.spaces.filter(s=>s.owner_id===o.id).length}</td><td><span class="status ${o.active?'status-confirmed':'status-off'}">${o.active?'Activo':'Inactivo'}</span></td><td><button class="btn btn-light" data-owner-edit="${o.profile_id}">Editar</button> <button class="btn btn-light" data-owner-toggle="${o.id}" data-active="${o.active}">${o.active?'Desactivar':'Activar'}</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">No hay propietarios.</td></tr>'}</tbody></table></div></div><p class="admin-message"></p>`;
+    root.innerHTML=header('PROPIETARIOS','Propietarios',`<button id="newOwner" class="btn btn-dark">+ Añadir propietario</button>`)+`<div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Propietario</th><th>Email</th><th>Teléfono</th><th>Espacios</th><th>Estado</th><th></th></tr></thead><tbody>${state.owners.length?state.owners.map(o=>`<tr><td><strong>${esc(`${o.first_name||''} ${o.last_name||''}`.trim()||'Sin nombre')}</strong></td><td>${esc(o.email||'')}</td><td>${esc(o.phone||'—')}</td><td>${state.spaces.filter(s=>s.owner_id===o.id).length}</td><td><span class="status ${o.active?'status-confirmed':'status-off'}">${o.active?'Activo':'Inactivo'}</span></td><td><button class="btn btn-light" data-owner-edit="${o.profile_id}">Editar</button> <button class="btn btn-light" data-owner-resend="${o.id}">✉️ Reenviar invitación</button> <button class="btn btn-light" data-owner-toggle="${o.id}" data-active="${o.active}">${o.active?'Desactivar':'Activar'}</button></td></tr>`).join(''):'<tr><td colspan="6" class="muted">No hay propietarios.</td></tr>'}</tbody></table></div></div><p class="admin-message"></p>`;
     root.querySelector('#newOwner').onclick=()=>ownerModal(null);
     root.querySelectorAll('[data-owner-edit]').forEach(b=>b.onclick=()=>ownerModal(state.owners.find(o=>o.profile_id===b.dataset.ownerEdit)));
+    root.querySelectorAll('[data-owner-resend]').forEach(b=>b.onclick=()=>resendOwnerInvitation(b.dataset.ownerResend));
     root.querySelectorAll('[data-owner-toggle]').forEach(b=>b.onclick=async()=>{const q=await state.client.rpc('admin_set_owner_active',{p_owner_id:b.dataset.ownerToggle,p_active:b.dataset.active!=='true'});if(q.error){alert(q.error.message);return;}await refresh();renderView('owners');});
+  }
+
+  async function resendOwnerInvitation(ownerId){
+    const owner=state.owners.find(o=>o.id===ownerId);
+    if(!owner)return;
+
+    const name=`${owner.first_name||''} ${owner.last_name||''}`.trim()||owner.email||'este propietario';
+    const email=owner.email||'';
+
+    if(!confirm(`¿Reenviar el enlace de acceso a ${name}${email?` (${email})`:''}?`))return;
+
+    const {data:{session},error:sessionError}=await state.client.auth.getSession();
+
+    if(sessionError||!session){
+      alert('La sesión de administración no es válida. Vuelve a iniciar sesión.');
+      return;
+    }
+
+    try{
+      const response=await fetch('https://hvuseljtqdgekotrsiwd.supabase.co/functions/v1/resend-owner-invitation',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          Authorization:`Bearer ${session.access_token}`
+        },
+        body:JSON.stringify({owner_id:ownerId})
+      });
+
+      let data={};
+      try{data=await response.json();}catch{}
+
+      if(!response.ok){
+        throw new Error(data.error||'No se ha podido reenviar la invitación.');
+      }
+
+      alert(`Se ha enviado un nuevo enlace de acceso a ${email}.`);
+    }catch(error){
+      console.error(error);
+      alert(error.message||'No se ha podido reenviar la invitación.');
+    }
   }
 
   function ownerModal(o){
