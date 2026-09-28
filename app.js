@@ -15,7 +15,7 @@ const FALLBACK_SPACES = [{
   deposit:50, hours:'11:00–23:00 / 00:00',
   features:['80 sillas','14 mesas','Cocina equipada','Aseos adaptados','Climatización independiente','Monitor/a infantil 3 h','Pista de fútbol','Parque infantil','Cama elástica'],
   gallery:['assets/44728f3e-b83b-415f-918a-0e77a90f1819.jpg','assets/78462fe7-2189-4361-8f27-d57f847d9b02.jpg','assets/9801f99c-b3cc-4bf1-a330-c8ba9e7b0564.jpg','assets/1cc39359-35d7-44a7-937c-df9c444bcf6c.jpg','assets/74dd0b0f-06b9-4ed7-8be5-b277926c49a9.jpg'],
-  cleaningAvailable:true, cleaningPrice:50, cancellationPolicy:'', active:true, activeFrom:'2026-09-25', activeUntil:'2027-12-31'
+  cleaningAvailable:false, cleaningPrice:0, cancellationPolicy:'', active:true, activeFrom:'2026-09-25', activeUntil:'2027-12-31'
 }];
 
 const euro=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(n||0));
@@ -48,10 +48,11 @@ async function getPublicSpaces(){
       const imageRes=await client.from('space_images').select('image_url,sort_order').eq('space_id',s.id).order('sort_order');
       if(!imageRes.error)images=(imageRes.data||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(x=>x.image_url).filter(Boolean);
       let services=[]; const serviceRes=await client.rpc('get_public_space_services',{p_space_id:s.id}); if(!serviceRes.error)services=serviceRes.data||[]; let dayPrices={}; const dayRes=await client.rpc('get_public_space_day_prices',{p_space_id:s.id}); if(!dayRes.error)(dayRes.data||[]).forEach(x=>dayPrices[x.day_of_week]=Number(x.price||0)); let normalizedSpace=normalizeSpace({...s,space_features:features.map(feature=>({feature})),space_images:images.map((image_url,i)=>({image_url,sort_order:i})),space_services:services,day_prices:dayPrices});
-      // Salvaguarda para La Nube: mientras se termina la configuración de servicios,
-      // su ficha debe reflejar la configuración confirmada en Supabase.
-      if(String(normalizedSpace.id)===LA_NUBE_ID){
-        normalizedSpace={...normalizedSpace,cleaningAvailable:true,cleaningPrice:50,deposit:normalizedSpace.deposit==null?50:normalizedSpace.deposit};
+      // Salvaguarda únicamente para la fianza de La Nube.
+      // La limpieza debe respetar siempre cleaning_available y cleaning_price
+      // configurados en Supabase por el propietario.
+      if(String(normalizedSpace.id)===LA_NUBE_ID && normalizedSpace.deposit==null){
+        normalizedSpace={...normalizedSpace,deposit:50};
       }
       normalized.push(normalizedSpace);
     }
