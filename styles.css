@@ -327,528 +327,171 @@
   outline-offset:2px;
 }
 
+/* =========================================================
+   V31 — DISEÑO FINAL COMPACTO Y UNIFICADO
+   Objetivo: reproducir la composición compacta, clara y elegante
+   definida para MiEspacioParaCelebrar, sin tocar la funcionalidad.
+========================================================= */
 
-/* ==========================================================
-   RESPONSIVE-FINAL-2026-09-30
-   Correcciones finales para escritorio, tablet, móvil vertical
-   y móvil horizontal. Se conserva todo el CSS anterior.
-   ========================================================== */
+/* Base compacta */
+html,body{max-width:100%;overflow-x:hidden}
+.container{width:min(1160px,calc(100% - 40px));margin-left:auto;margin-right:auto}
+.site-header .container.nav{min-height:72px}
+.site-header .brand-logo{width:122px;max-width:122px;height:auto;object-fit:contain}
 
-/* Navegación unificada en todas las páginas */
-.site-header .container.nav{
-  width:100%;
-  max-width:1400px;
-  margin:0 auto;
-  padding-left:24px;
-  padding-right:24px;
-  box-sizing:border-box;
-}
-.site-header .brand{
-  display:flex;
-  align-items:center;
-  flex:0 0 auto;
-}
-.site-header .brand-logo{
-  display:block;
-  width:138px;
-  max-width:138px;
-  height:auto;
-  max-height:58px;
-  object-fit:contain;
-}
-.site-header .nav nav{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:18px;
-  min-width:0;
-}
-.site-header .nav nav a,
-.site-header .nav nav a:visited{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:46px;
-  padding:0 18px;
-  border:1px solid #d2d8c2;
-  border-radius:999px;
-  background:#dfe4d2;
-  color:#344234;
-  font-size:14px;
-  font-weight:800;
-  line-height:1.1;
-  text-align:center;
-  text-decoration:none;
-  white-space:nowrap;
-  box-shadow:none;
-  transition:background .18s ease,border-color .18s ease,transform .18s ease;
-}
-.site-header .nav nav a:hover,
-.site-header .nav nav a:focus-visible{
-  background:#d6dcc8;
-  border-color:#c8cfb7;
-  color:#344234;
-  transform:translateY(-1px);
-  text-decoration:none;
-}
-.site-header .nav nav a::after{
-  display:none!important;
-  content:none!important;
-}
-
-/* Evita que los botones del encabezado provoquen desbordamiento */
-.site-header,
-.site-header .nav{
-  min-width:0;
-}
-.site-header .nav nav{
-  flex-wrap:wrap;
-}
-
-/* Tablas de administración: nunca se cortan por el borde */
-.admin-table-wrap{
-  width:100%;
-  max-width:100%;
-  overflow-x:auto;
-  overflow-y:visible;
-  -webkit-overflow-scrolling:touch;
-}
-.admin-table{
-  width:100%;
-  min-width:820px;
-}
-.admin-table td,
-.admin-table th{
-  overflow-wrap:anywhere;
-}
-.table-actions,
-.admin-table td:last-child{
-  width:auto;
-}
-.table-actions{
-  white-space:normal;
-}
-.table-actions .btn,
-.admin-table td:last-child .btn{
-  margin:2px 0;
-  white-space:nowrap;
-}
-
-/* Botoneras y formularios generales */
-.admin-actions,
-.modal-actions,
-.photo-actions,
-.feature-add{
-  min-width:0;
-}
-.admin-actions .btn,
-.modal-actions .btn,
-.photo-actions .btn{
-  max-width:100%;
-}
-.admin-form-grid>*{
-  min-width:0;
-}
-.admin-form-grid input,
-.admin-form-grid select,
-.admin-form-grid textarea{
-  max-width:100%;
-}
-
-/* Reservas: el contenido puede crecer sin empujar la pantalla */
-.booking-item,
-.booking-item-main,
-.booking-item-head,
-.booking-actions{
-  min-width:0;
-}
-.booking-actions{
-  flex-wrap:wrap;
-}
-.booking-actions .btn{
-  white-space:nowrap;
-}
-
-/* Modales: siempre dentro de la ventana */
-.modal-backdrop{
-  box-sizing:border-box;
-  overflow:auto;
-}
-.modal-card{
-  box-sizing:border-box;
-  min-width:0;
-}
-.modal-card img{
-  max-width:100%;
-}
-
-/* Imágenes de contenido: no fuerzan el ancho de la página */
-.space-detail-image,
-.hero-media,
-.gallery,
-.photo-admin{
-  min-width:0;
-}
-.space-detail-image img,
-.hero-media img,
-.gallery img,
-.photo-admin img{
-  max-width:100%;
-}
-
-/* TABLET / PANTALLAS MEDIANAS */
-@media (max-width:1100px){
-  .site-header .container.nav{
-    padding-left:18px;
-    padding-right:18px;
-    gap:16px;
-  }
-  .site-header .brand-logo{
-    width:118px;
-    max-width:118px;
-  }
-  .site-header .nav nav{
-    gap:9px;
-  }
-  .site-header .nav nav a,
-  .site-header .nav nav a:visited{
-    min-height:44px;
-    padding:0 14px;
-    font-size:13px;
-  }
-  .booking-grid{
-    grid-template-columns:minmax(0,1fr) 400px;
-    gap:40px;
-  }
-}
-
-/* MÓVIL */
-@media (max-width:760px){
-  .container{
-    width:min(100% - 24px,1160px);
-  }
-
-  .site-header .container.nav{
-    padding:10px 12px;
-    gap:10px;
-  }
-
-  .site-header .brand-logo{
-    width:100px;
-    max-width:100px;
-    max-height:50px;
-  }
-
-  /* Si existe el menú móvil del proyecto, queda operativo.
-     Si no existe, los enlaces se muestran en bloque para no perder navegación. */
-  .site-header .nav>nav{
-    min-width:0;
-  }
-
-  .site-header .nav nav a,
-  .site-header .nav nav a:visited{
-    min-height:42px;
-    padding:0 12px;
-    font-size:12px;
-  }
-
-  .hero{
-    min-height:520px;
-  }
-  .hero-content{
-    padding:70px 0;
-  }
-
-  .space-card,
-  .booking-grid,
-  .detail-main{
-    min-width:0;
-  }
-
-  .booking-grid{
-    grid-template-columns:1fr;
-  }
-
-  .booking-grid>div+div{
-    margin-top:30px;
-  }
-
-  .detail-main{
-    display:block;
-  }
-
-  .detail-summary{
-    margin-top:30px;
-  }
-
-  .owner-grid{
-    grid-template-columns:1fr;
-  }
-
-  .owner-space{
-    min-width:0;
-  }
-
-  .owner-date{
-    text-align:left;
-  }
-
-  .booking-item{
-    display:block;
-  }
-
-  .booking-actions{
-    width:100%;
-    margin-top:18px;
-  }
-
-  .booking-actions .btn{
-    flex:1 1 150px;
-  }
-
-  .admin-table-wrap{
-    overflow-x:auto;
-    width:100%;
-  }
-
-  .admin-table{
-    min-width:760px;
-  }
-
-  .admin-main{
-    min-width:0;
-  }
-
-  .admin-card,
-  .admin-panel{
-    min-width:0;
-    max-width:100%;
-  }
-
-  .admin-view-head{
-    min-width:0;
-  }
-
-  .admin-kpis{
-    min-width:0;
-  }
-
-  .photo-grid{
-    min-width:0;
-  }
-
-  .photo-admin{
-    min-width:0;
-  }
-
-  .modal-backdrop{
-    padding:8px;
-  }
-
-  .modal-card{
-    width:100%;
-    max-width:100%;
-    max-height:94vh;
-    overflow:auto;
-  }
-
-  .modal-title{
-    min-width:0;
-  }
-
-  .modal-title h2{
-    overflow-wrap:anywhere;
-  }
-}
-
-/* MÓVIL HORIZONTAL */
-@media (max-width:760px) and (orientation:landscape){
-  .site-header .container.nav{
-    padding-top:7px;
-    padding-bottom:7px;
-  }
-
-  .site-header .brand-logo{
-    width:92px;
-    max-width:92px;
-    max-height:44px;
-  }
-
-  .site-header .nav nav{
-    gap:6px;
-  }
-
-  .site-header .nav nav a,
-  .site-header .nav nav a:visited{
-    min-height:38px;
-    padding:0 10px;
-    font-size:11px;
-  }
-
-  .hero{
-    min-height:430px;
-  }
-
-  .hero-content{
-    padding:50px 0;
-  }
-
-  .brand-hero-inner{
-    padding:28px 0 35px;
-  }
-
-  .brand-hero{
-    min-height:auto;
-  }
-
-  .modal-card{
-    max-height:calc(100vh - 12px);
-  }
-
-  .admin-main{
-    padding-left:10px;
-    padding-right:10px;
-  }
-
-  .admin-kpis{
-    grid-template-columns:repeat(4,minmax(0,1fr));
-  }
-
-  .admin-dashboard-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .photo-grid{
-    grid-template-columns:repeat(3,minmax(0,1fr));
-  }
-}
-
-/* MÓVIL MUY ESTRECHO */
-@media (max-width:430px){
-  .site-header .container.nav{
-    padding-left:8px;
-    padding-right:8px;
-  }
-
-  .site-header .brand-logo{
-    width:88px;
-    max-width:88px;
-  }
-
-  .site-header .nav nav{
-    gap:5px;
-  }
-
-  .site-header .nav nav a,
-  .site-header .nav nav a:visited{
-    min-height:40px;
-    padding:0 9px;
-    font-size:11px;
-  }
-
-  .admin-main{
-    padding-left:6px;
-    padding-right:6px;
-  }
-
-  .admin-kpis{
-    grid-template-columns:1fr;
-  }
-
-  .booking-actions .btn{
-    flex-basis:100%;
-  }
-
-  .admin-table{
-    min-width:700px;
-  }
-}
-
-/* Corrección específica de textos largos en botones */
+/* Botones: una única apariencia en toda la web */
 .btn,
-.site-header .nav nav a,
-.private-nav .btn,
-.admin-table .btn{
-  overflow-wrap:anywhere;
-  word-break:normal;
+button.btn,
+a.btn{min-height:44px;padding:0 20px;border-radius:999px;border:1px solid transparent;font-size:14px;font-weight:800;line-height:1.1;box-shadow:none}
+.btn-dark{background:#344234;color:#fff;border-color:#344234}
+.btn-dark:hover{background:#283428;border-color:#283428;color:#fff}
+.btn-light{background:#fff;color:#344234;border-color:#d2d5c8}
+.btn-light:hover{background:#f0f1eb;color:#344234;border-color:#c3c8b6}
+.btn-owner{background:#cacdbd;color:#344234;border-color:#cacdbd}
+.btn-owner:hover{background:#c1c6b3;color:#344234;border-color:#c1c6b3}
+
+/* Cabecera */
+.site-header{background:rgba(251,250,247,.97);border-bottom:1px solid #e5e4de}
+.site-header .container.nav{padding:8px 20px;gap:24px}
+.site-header nav{gap:12px}
+.site-header nav a,.site-header nav a:visited{min-height:46px;padding:0 21px;border:1px solid #d2d8c2;border-radius:999px;background:#dfe4d2;color:#344234;font-size:14px;font-weight:800;box-shadow:none}
+.site-header nav a:hover,.site-header nav a:focus-visible{background:#d1d7c2;border-color:#c2c9b0;color:#344234;transform:none}
+.site-header nav a.active{background:#c7cdb9;border-color:#b8c0a7;color:#344234;font-weight:900}
+
+/* Página de espacios: compacta como el diseño de referencia */
+.page-intro{padding:52px 0 42px;border-bottom:1px solid var(--line)}
+.page-intro h1{font-size:clamp(42px,4.6vw,58px);line-height:.98;letter-spacing:-.055em;margin:0 0 14px}
+.page-intro>div>p:last-child{font-size:17px;line-height:1.45;margin:0;max-width:720px}
+.page-intro .eyebrow{margin-bottom:10px}
+
+.spaces-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:0}
+.space-tile{border-radius:18px;box-shadow:none}
+.space-tile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.06)}
+.space-tile-photo{height:190px}
+.space-tile-info{padding:15px 17px 17px}
+.space-tile-info h2{font-size:24px;line-height:1.05;margin:0 0 4px}
+.space-tile-info p{font-size:13px;line-height:1.3}
+.space-tile-price{font-size:14px;font-weight:800;line-height:1.25;margin-top:7px}
+.space-tile .btn{min-height:40px;margin-top:10px}
+
+/* Secciones generales: menos aire */
+.section{padding:54px 0}
+.section-head{gap:28px;margin-bottom:22px}
+.section h2{font-size:clamp(30px,4vw,46px);line-height:1.02}
+
+/* Home: bloque principal mucho más compacto */
+.hero{min-height:430px}
+.hero-content{padding:64px 0;max-width:1160px}
+.hero h1{font-size:clamp(42px,5vw,68px);line-height:.98;margin-bottom:18px}
+.hero-copy{font-size:17px;line-height:1.45;max-width:500px;margin-bottom:20px}
+.hero-actions{gap:10px}
+.hero-actions .btn{min-height:44px}
+
+/* Variante de portada utilizada por la web actual */
+.brand-hero{min-height:430px}
+.brand-hero-inner{padding:54px 0 58px}
+.brand-hero h1{font-size:clamp(42px,5vw,60px);line-height:.98;margin-bottom:16px}
+.brand-hero .hero-copy{font-size:17px;line-height:1.45;max-width:500px;margin-bottom:20px}
+.brand-hero .hero-actions{gap:10px}
+.brand-hero .hero-actions .btn{min-height:44px}
+
+/* Mapa y bloques inferiores */
+.map-section{padding-top:34px}
+.map-section .section-head{margin-bottom:18px}
+.map{height:360px;min-height:360px;border-radius:18px}
+
+/* Área privada y reservas: tarjetas compactas */
+.owner-group,.owner-bookings{margin-top:28px}
+.owner-grid{gap:14px}
+.owner-space{padding:18px;border-radius:16px}
+.owner-space h3{font-size:21px}
+.booking-list{gap:12px}
+.booking-item{border-radius:16px;padding:16px}
+.booking-item-head{gap:14px;margin-bottom:12px}
+.booking-item h3{font-size:20px}
+.booking-meta{gap:10px 18px}
+.booking-financials{margin-top:14px;padding:12px 14px;border-radius:14px}
+.booking-actions{gap:8px;margin-top:12px}
+.booking-actions .btn{min-height:40px}
+
+/* Filtros de reservas: compactos y legibles */
+.booking-filters,.reservation-filters,.owner-booking-filters{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}
+.booking-filters button,.reservation-filters button,.owner-booking-filters button{min-height:34px;padding:0 13px;border:1px solid #d7d8d0;border-radius:999px;background:#fff;color:#344234;font-size:12px;font-weight:800;cursor:pointer}
+.booking-filters button.active,.reservation-filters button.active,.owner-booking-filters button.active{background:#344234;border-color:#344234;color:#fff}
+
+/* Modales y formularios */
+.modal{padding:18px}
+.modal-card{border-radius:18px}
+.admin-form-grid{gap:12px}
+
+/* Pie */
+footer{margin-top:38px}
+
+/* Tablet */
+@media(max-width:1100px){
+  .site-header .container.nav{padding:8px 18px}
+  .site-header nav{gap:8px}
+  .site-header nav a{min-height:44px;padding:0 16px;font-size:13px}
+  .hero,.brand-hero{min-height:390px}
+  .hero-content{padding:54px 0}
+  .brand-hero-inner{padding:48px 0 50px}
+  .page-intro{padding:44px 0 36px}
+  .spaces-grid{gap:18px}
+  .space-tile-photo{height:175px}
 }
 
-/* No permitir que el contenido genere scroll horizontal */
-html,
-body{
-  max-width:100%;
-  overflow-x:hidden;
+/* Móvil vertical */
+@media(max-width:760px){
+  .container{width:min(100% - 28px,1160px)}
+  .site-header .container.nav{min-height:62px;padding:7px 12px}
+  .site-header .brand-logo{width:96px;max-width:96px}
+  .site-header nav{gap:6px}
+  .site-header nav a{min-height:40px;padding:0 11px;font-size:12px}
+  .page-intro{padding:34px 0 28px}
+  .page-intro h1{font-size:38px;margin-bottom:11px}
+  .page-intro>div>p:last-child{font-size:15px}
+  .section{padding:40px 0}
+  .spaces-grid{grid-template-columns:1fr;gap:12px}
+  .space-tile-photo{height:190px}
+  .space-tile-info{padding:13px 14px 15px}
+  .space-tile-info h2{font-size:23px}
+  .hero,.brand-hero{min-height:auto}
+  .hero-content{padding:52px 0}
+  .brand-hero-inner{padding:42px 0 46px}
+  .hero h1,.brand-hero h1{font-size:42px}
+  .hero-copy,.brand-hero .hero-copy{font-size:16px}
+  .hero-actions{flex-wrap:wrap}
+  .hero-actions .btn{min-height:42px}
+  .map{height:300px;min-height:300px}
+  .booking-meta{grid-template-columns:1fr 1fr}
+  .booking-actions{display:grid;grid-template-columns:1fr 1fr}
 }
 
-
-/* V32 — menú móvil unificado + acceso universal a Google Maps */
-@media(max-width:850px){
-  .site-header .nav>nav{
-    gap:8px;
-    padding:12px;
-    background:rgba(251,250,247,.98);
-    border:1px solid #d2d5c8;
-    border-top:1px solid #d2d5c8;
-    border-radius:0 0 18px 18px;
-    box-shadow:0 16px 30px rgba(0,0,0,.08);
-  }
-  .site-header .nav>nav a,
-  .site-header .nav>nav a.nav-cta,
-  .site-header .nav>nav a.active{
-    display:flex!important;
-    align-items:center;
-    justify-content:center;
-    width:100%;
-    min-height:48px;
-    padding:0 16px;
-    border:1px solid #d2d5c8!important;
-    border-radius:999px!important;
-    background:#cacdbd!important;
-    color:#344234!important;
-    font-size:14px;
-    font-weight:800;
-    text-decoration:none;
-    white-space:normal;
-    text-align:center;
-    box-shadow:none;
-  }
-  .site-header .nav>nav a+a{border-top:1px solid #d2d5c8!important}
-  .site-header .nav>nav a:hover,
-  .site-header .nav>nav a:focus-visible,
-  .site-header .nav>nav a.active,
-  .site-header .nav>nav a.nav-cta:hover{
-    background:#c1c6b3!important;
-    border-color:#c1c6b3!important;
-    color:#344234!important;
-  }
+/* Móvil horizontal */
+@media(min-width:561px) and (max-width:900px) and (orientation:landscape){
+  .site-header .container.nav{min-height:56px}
+  .site-header .brand-logo{width:88px}
+  .site-header nav a{min-height:38px;padding:0 12px;font-size:12px}
+  .hero,.brand-hero{min-height:300px}
+  .hero-content{padding:38px 0}
+  .brand-hero-inner{padding:34px 0}
+  .hero h1,.brand-hero h1{font-size:38px}
+  .page-intro{padding:30px 0 24px}
+  .spaces-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .space-tile-photo{height:150px}
+  .space-tile-info{padding:11px 13px 13px}
 }
 
-.map-popup-actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-top:9px;
-}
-.map-popup-actions a{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:34px;
-  padding:7px 11px;
-  border:1px solid #d2d5c8;
-  border-radius:999px;
-  background:#cacdbd;
-  color:#344234;
-  font-size:12px;
-  font-weight:800;
-  text-decoration:none;
-}
-.map-popup-actions a:hover{
-  background:#c1c6b3;
-  border-color:#c1c6b3;
-  color:#344234;
-}
-@media(max-width:560px){
-  .map-popup-actions{display:grid;grid-template-columns:1fr}
-  .map-popup-actions a{width:100%;min-height:38px;font-size:12px}
+/* Móvil muy estrecho */
+@media(max-width:430px){
+  .container{width:min(100% - 20px,1160px)}
+  .site-header .container.nav{flex-wrap:wrap;justify-content:center}
+  .site-header .brand{width:100%;justify-content:center}
+  .site-header nav{width:100%;justify-content:center;flex-wrap:wrap}
+  .site-header nav a{flex:1 1 calc(50% - 6px);min-width:120px;max-width:190px}
+  .page-intro{padding:30px 0 24px}
+  .page-intro h1{font-size:34px}
+  .space-tile-photo{height:165px}
+  .booking-meta{grid-template-columns:1fr}
+  .booking-actions{grid-template-columns:1fr}
 }
