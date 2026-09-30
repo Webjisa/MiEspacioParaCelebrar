@@ -77,30 +77,13 @@ async function geocodeSpace(s){
   try{const cached=sessionStorage.getItem(key);if(cached){const c=JSON.parse(cached);return {...s,latitude:Number(c.lat),longitude:Number(c.lon)};}}catch(_){ }
   try{const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=es&q='+encodeURIComponent(address);const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)return s;const data=await r.json();if(!data.length)return s;const result={lat:data[0].lat,lon:data[0].lon};try{sessionStorage.setItem(key,JSON.stringify(result));}catch(_){ }return {...s,latitude:Number(result.lat),longitude:Number(result.lon)};}catch(error){console.warn('No se pudo geolocalizar',address,error);return s;}
 }
-async function googleMapsDirectionsUrl(s){
-  const lat=Number(s.latitude),lon=Number(s.longitude);
-  if(Number.isFinite(lat)&&Number.isFinite(lon)){
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lon}`)}`;
-  }
-  const address=[s.address,s.city,s.province,'España'].filter(Boolean).join(', ');
-  return address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`:'';
-}
-
 async function initMap(id,spaces,single=false){
   const el=document.getElementById(id);if(!el||!window.L)return;el.innerHTML='<div class="map-loading">Cargando ubicación…</div>';
   const resolved=[];for(const s of spaces)resolved.push(await geocodeSpace(s));
   const points=resolved.filter(s=>Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)));
   if(!points.length){el.innerHTML='<div class="map-empty">La ubicación exacta todavía no está configurada. El administrador puede introducir la dirección y localizar el espacio desde su área privada.</div>';return;}
   const map=L.map(el,{scrollWheelZoom:false});L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const bounds=[];
-  points.forEach(s=>{
-    const p=[Number(s.latitude),Number(s.longitude)];
-    bounds.push(p);
-    const directionsUrl=googleMapsDirectionsUrl(s);
-    const spaceLink=single?'':'<a href="espacio.html?id='+encodeURIComponent(s.id)+'">Ver espacio</a>';
-    const directionsLink=directionsUrl?`<a class="map-directions-link" href="${directionsUrl}" target="_blank" rel="noopener noreferrer">Cómo llegar con Google Maps</a>`:'';
-    const popup=`<strong>${esc(s.name)}</strong><br>${esc(s.city)}${single?'':' · '+esc(s.province)}<div class="map-popup-actions">${spaceLink}${directionsLink}</div>`;
-    L.marker(p).addTo(map).bindPopup(popup);
-  });
+  points.forEach(s=>{const p=[Number(s.latitude),Number(s.longitude)];bounds.push(p);L.marker(p).addTo(map).bindPopup(`<strong>${esc(s.name)}</strong><br>${esc(s.city)}${single?'':' · '+esc(s.province)}${single?'':'<br><a href="espacio.html?id='+encodeURIComponent(s.id)+'">Ver espacio</a>'}`);});
   if(single)map.setView(bounds[0],17);else map.fitBounds(bounds,{padding:[35,35],maxZoom:16});setTimeout(()=>map.invalidateSize(),150);
 }
 
@@ -354,7 +337,17 @@ async function initBooking(s){
 async function renderHome(){return;}
 async function renderSpacesMap(){const map=document.querySelector('#spacesMap');if(!map)return;const spaces=window.__publicSpaces||await getPublicSpaces();initMap('spacesMap',spaces,false);}
 
-async function initPrivateLogin(){const form=document.querySelector('#loginForm');if(!form)return;const msg=document.querySelector('#loginMessage');if(!SUPABASE_ANON_KEY){msg.textContent='Falta la clave pública de Supabase en la configuración.';return;}if(!window.supabase){msg.textContent='No se ha podido cargar la conexión con Supabase. Recarga la página.';return;}const client=await getClient();if(!client){msg.textContent='No se ha podido inicializar la conexión con Supabase.';return;}try{const {data:{session},error:sessionError}=await client.auth.getSession();if(sessionError)throw sessionError;if(session){location.href='area-privada.html';return;}}catch(error){console.error('Error comprobando la sesión:',error);msg.textContent='No se ha podido comprobar la conexión con Supabase.';return;}form.addEventListener('submit',async e=>{e.preventDefault();msg.textContent='Accediendo…';const email=document.querySelector('#loginEmail').value.trim(),password=document.querySelector('#loginPassword').value;const {error}=await client.auth.signInWithPassword({email,password});if(error){console.error('Error de acceso:',error);msg.textContent='No se ha podido iniciar sesión. Comprueba el correo y la contraseña.';return;}location.href='area-privada.html';});}
+async function getPrivateDestination(client){
+  const {data:{user},error:userError}=await client.auth.getUser();
+  if(userError) throw userError;
+  if(!user) return 'acceso.html';
+  const {data:profile,error:profileError}=await client.from('profiles').select('role,active').eq('id',user.id).maybeSingle();
+  if(profileError) throw profileError;
+  if(!profile || profile.active!==true) return 'acceso.html';
+  return profile.role==='admin' ? 'admin.html' : 'area-privada.html';
+}
+
+async function initPrivateLogin(){const form=document.querySelector('#loginForm');if(!form)return;const msg=document.querySelector('#loginMessage');if(!SUPABASE_ANON_KEY){msg.textContent='Falta la clave pública de Supabase en la configuración.';return;}if(!window.supabase){msg.textContent='No se ha podido cargar la conexión con Supabase. Recarga la página.';return;}const client=await getClient();if(!client){msg.textContent='No se ha podido inicializar la conexión con Supabase.';return;}try{const {data:{session},error:sessionError}=await client.auth.getSession();if(sessionError)throw sessionError;if(session){location.href=await getPrivateDestination(client);return;}}catch(error){console.error('Error comprobando la sesión:',error);msg.textContent='No se ha podido comprobar la conexión con Supabase.';return;}form.addEventListener('submit',async e=>{e.preventDefault();msg.textContent='Accediendo…';const email=document.querySelector('#loginEmail').value.trim(),password=document.querySelector('#loginPassword').value;const {error}=await client.auth.signInWithPassword({email,password});if(error){console.error('Error de acceso:',error);msg.textContent='No se ha podido iniciar sesión. Comprueba el correo y la contraseña.';return;}try{location.href=await getPrivateDestination(client);}catch(error){console.error('Error obteniendo el destino del usuario:',error);await client.auth.signOut();msg.textContent='No se ha podido identificar el tipo de usuario. Vuelve a intentarlo.';}});}
 
 function ensurePrivateResponsiveStyles(){
  const id='mep-private-responsive-fix';
@@ -400,6 +393,7 @@ async function renderPrivateArea(){
  const {data:{user}}=await client.auth.getUser();if(!user){location.href='acceso.html';return;}
  const {data:profile}=await client.from('profiles').select('id,email,first_name,last_name,role,active').eq('id',user.id).maybeSingle();
  if(!profile||profile.active!==true||!['admin','owner'].includes(profile.role)){await client.auth.signOut();location.href='acceso.html';return;}
+ if(profile.role==='admin'){location.href='admin.html';return;}
  document.querySelector('#privateName').textContent=`${profile.first_name||''} ${profile.last_name||''}`.trim()||profile.email;
  document.querySelector('#privateRole').textContent=profile.role==='admin'?'Administrador':'Propietario';
  document.querySelector('#logoutBtn').addEventListener('click',async()=>{await client.auth.signOut();location.href='acceso.html';});
