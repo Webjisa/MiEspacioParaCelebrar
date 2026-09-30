@@ -280,16 +280,55 @@
   .nav nav.home-nav a,
   .nav nav.home-nav a.nav-cta{min-height:42px;padding:0 12px;font-size:12px}
 }
-
-/* V30 — botón activo del área privada: verde del logotipo */
-.private-nav .btn-dark{
-  background:#cacdbd;
-  border-color:#cacdbd;
-  color:#344234;
-  font-weight:800;
+/* V31 — área privada igual que la navegación general: sin botones, solo activo en negrita */
+.private-nav{
+  display:flex;
+  align-items:center;
+  gap:28px;
 }
-.private-nav .btn-dark:hover{
-  background:#c1c6b3;
-  border-color:#c1c6b3;
-  color:#344234;
+.private-nav .btn,
+.private-nav .btn-dark,
+.private-nav .btn-light{
+  display:inline;
+  min-height:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent !important;
+  color:var(--ink) !important;
+  font:inherit;
+  font-size:14px;
+  font-weight:400;
+  line-height:1.5;
+  text-decoration:none;
+  box-shadow:none;
+  transform:none;
+  transition:none;
+}
+.private-nav .btn:hover,
+.private-nav .btn-dark:hover,
+.private-nav .btn-light:hover{
+  background:transparent !important;
+  border:0;
+  color:var(--ink) !important;
+  text-decoration:none;
+  transform:none;
+}
+.private-nav .active,
+.private-nav .btn.active,
+.private-nav .btn-dark.active,
+.private-nav .btn-light.active{
+  font-weight:800 !important;
+}
+@media(max-width:700px){
+  .private-nav{gap:10px}
+  .private-nav .btn,
+  .private-nav .btn-dark,
+  .private-nav .btn-light{font-size:13px}
+}
+@media(max-width:560px){
+  .private-nav{gap:8px}
+  .private-nav .btn,
+  .private-nav .btn-dark,
+  .private-nav .btn-light{font-size:12px}
 }
