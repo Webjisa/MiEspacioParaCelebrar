@@ -344,36 +344,53 @@ function ensurePrivateResponsiveStyles(){
  if(document.getElementById(id))return;
  const st=document.createElement('style');st.id=id;
  st.textContent=`
-  #privateArea{width:100%;max-width:100%;overflow-x:hidden}
-  .owner-bookings,.owner-grid,.booking-list,.booking-item{width:100%;min-width:0;box-sizing:border-box}
-  .booking-meta span{min-width:0;overflow-wrap:anywhere}
-  .booking-actions{display:flex;flex-wrap:wrap;gap:10px}
-  .booking-actions .btn{min-width:130px}
-  .owner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-  .owner-space{min-width:0}
-  .owner-date{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  @media(max-width:760px){
-    #privateArea{padding:0 10px 24px;box-sizing:border-box}
-    .owner-grid{grid-template-columns:1fr}
-    .booking-item{padding:14px}
-    .booking-item-head{gap:10px;flex-wrap:wrap}
-    .booking-meta{display:grid !important;grid-template-columns:1fr !important;gap:8px !important}
-    .booking-financials{display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px !important}
-    .booking-actions{display:grid !important;grid-template-columns:1fr !important;gap:8px}
-    .booking-actions .btn{width:100%;min-width:0;min-height:46px}
-    .owner-date{display:grid;grid-template-columns:1fr;gap:10px}
-    .owner-date .btn{width:100%;min-height:44px}
-    .modal-card,.modal-shell{width:calc(100vw - 20px) !important;max-width:none !important;max-height:90vh;overflow:auto;box-sizing:border-box}
-    .admin-form-grid{grid-template-columns:1fr !important}
-    .modal-actions{display:grid;grid-template-columns:1fr !important;gap:8px}
-    .modal-actions .btn{width:100%;min-height:44px}
-  }
-  @media(max-width:430px){
-    #privateArea{padding-left:6px;padding-right:6px}
-    .booking-financials{grid-template-columns:1fr !important}
-    .booking-item h3{font-size:1.05rem}
-  }
- `;
+#privateArea{width:100%;max-width:100%;min-width:0;overflow-x:hidden;box-sizing:border-box}
+#privateArea *{box-sizing:border-box;min-width:0}
+.owner-bookings,.owner-grid,.booking-list,.booking-item{width:100%;max-width:100%;min-width:0}
+.owner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.owner-space{min-width:0;max-width:100%;overflow:hidden}
+.booking-item{overflow:hidden}
+.booking-meta{min-width:0}
+.booking-meta span{min-width:0;overflow-wrap:anywhere;word-break:break-word}
+.booking-financials{min-width:0}
+.booking-actions{display:flex;flex-wrap:wrap;gap:10px;width:100%;min-width:0}
+.booking-actions .btn{flex:1 1 150px;min-width:130px;max-width:100%;white-space:normal;line-height:1.2;min-height:44px}
+.owner-date{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.owner-date > *{min-width:0;max-width:100%}
+.modal-backdrop{padding:16px;overflow:auto}
+.modal-card{width:min(920px,100%);max-width:100%;max-height:calc(100vh - 32px);overflow:auto;box-sizing:border-box}
+.admin-form-grid{width:100%;min-width:0}
+.admin-form-grid label,.admin-form-grid input,.admin-form-grid select,.admin-form-grid textarea{min-width:0;max-width:100%}
+.admin-form-grid input,.admin-form-grid select,.admin-form-grid textarea{width:100%}
+@media(max-width:760px){
+ #privateArea{padding:0 10px 24px}
+ .owner-grid{grid-template-columns:1fr}
+ .booking-item{padding:14px;width:100%}
+ .booking-item-head{gap:10px;flex-wrap:wrap}
+ .booking-meta{display:grid !important;grid-template-columns:1fr !important;gap:8px !important}
+ .booking-financials{display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px !important}
+ .booking-actions{display:grid !important;grid-template-columns:1fr !important;gap:8px}
+ .booking-actions .btn{width:100%;min-width:0;min-height:46px}
+ .owner-date{display:grid;grid-template-columns:1fr;gap:10px}
+ .owner-date .btn{width:100%;min-height:44px}
+ .modal-backdrop{padding:10px}
+ .modal-card{width:100%;max-width:100%;max-height:calc(100vh - 20px)}
+ .admin-form-grid{grid-template-columns:1fr !important}
+ .modal-actions{display:grid;grid-template-columns:1fr !important;gap:8px}
+ .modal-actions .btn{width:100%;min-height:44px}
+}
+@media(max-width:760px) and (orientation:landscape){
+ #privateArea{padding-left:8px;padding-right:8px}
+ .owner-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .booking-financials{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+ .booking-actions{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media(max-width:430px){
+ #privateArea{padding-left:6px;padding-right:6px}
+ .booking-financials{grid-template-columns:1fr !important}
+ .booking-item h3{font-size:1.05rem}
+}
+`;
  document.head.appendChild(st);
 }
 async function renderPrivateArea(){
@@ -383,14 +400,11 @@ async function renderPrivateArea(){
  const {data:{user}}=await client.auth.getUser();if(!user){location.href='acceso.html';return;}
  const {data:profile}=await client.from('profiles').select('id,email,first_name,last_name,role,active').eq('id',user.id).maybeSingle();
  if(!profile||profile.active!==true||!['admin','owner'].includes(profile.role)){await client.auth.signOut();location.href='acceso.html';return;}
+ if(profile.role==='admin'){location.href='admin.html';return;}
  document.querySelector('#privateName').textContent=`${profile.first_name||''} ${profile.last_name||''}`.trim()||profile.email;
  document.querySelector('#privateRole').textContent=profile.role==='admin'?'Administrador':'Propietario';
  document.querySelector('#logoutBtn').addEventListener('click',async()=>{await client.auth.signOut();location.href='acceso.html';});
- if(profile.role==='admin'){
-   document.querySelector('#adminLink').hidden=false;
-   document.querySelector('#ownerContent').innerHTML='<p class="muted">Área de administración disponible desde el panel.</p>';
-   return;
- }
+
  const {data:ownerId,error:ownerError}=await client.rpc('get_my_owner_id');
  if(ownerError){console.error('Error obteniendo propietario:',ownerError);document.querySelector('#ownerContent').innerHTML='<p class="message">No se ha podido identificar el perfil de propietario.</p>';return;}
  if(!ownerId){document.querySelector('#ownerContent').innerHTML='<p class="message">No se ha encontrado el perfil de propietario.</p>';return;}
