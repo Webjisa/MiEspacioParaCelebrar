@@ -199,29 +199,49 @@ function ensureHolidayCalendarStyles(){
   const style=document.createElement('style');
   style.id='mep-holiday-calendar-styles';
   style.textContent=`
-    .calendar-day.holiday:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled){
-      background:#dbeafe !important;
-      border-color:#60a5fa !important;
-      color:#1d4ed8 !important;
+    /* Prioridad visual: Ocupada > Retenida > Festivo/Víspera > Normal/Cumplido */
+    .calendar-day.unavailable-confirmed{
+      background:#fee2e2 !important;
+      border-color:#ef4444 !important;
+      color:#b91c1c !important;
     }
-    .calendar-day.holiday:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled):hover{
-      background:#bfdbfe !important;
+    .calendar-day.unavailable-pending{
+      background:#fef3c7 !important;
+      border-color:#f59e0b !important;
+      color:#92400e !important;
     }
+    .calendar-day.holiday:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled),
     .calendar-day.holiday-eve:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled){
       background:#dbeafe !important;
       border-color:#60a5fa !important;
       color:#1d4ed8 !important;
     }
+    .calendar-day.holiday:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled):hover,
     .calendar-day.holiday-eve:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled):hover{
       background:#bfdbfe !important;
     }
-    .calendar-legend .legend-dot.holiday,.calendar-legend .legend-dot.holiday-eve{
-      background:#3b82f6 !important;
-    }
     .calendar-day.fulfilled{
-      background:#e5e7eb !important;
+      background:#ffffff !important;
       border-color:#d1d5db !important;
       color:#6b7280 !important;
+    }
+    .calendar-day:not(.holiday):not(.holiday-eve):not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled){
+      background:#ffffff !important;
+    }
+    .calendar-legend .legend-dot.confirmed{
+      background:#ef4444 !important;
+    }
+    .calendar-legend .legend-dot.pending{
+      background:#f59e0b !important;
+    }
+    .calendar-legend .legend-dot.holiday,
+    .calendar-legend .legend-dot.holiday-eve{
+      background:#3b82f6 !important;
+    }
+    .calendar-legend .legend-dot.normal,
+    .calendar-legend .legend-dot.fulfilled{
+      background:#ffffff !important;
+      border:1px solid #d1d5db !important;
     }
   `;
   document.head.appendChild(style);
@@ -255,7 +275,7 @@ function renderBookingCalendar(state){
   }
   const trailing=(7-((startWeek+daysInMonth)%7))%7;
   for(let i=1;i<=trailing;i++){const nm=month===12?1:month+1,ny=month===12?year+1:year;cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(ny,nm,i)}" disabled>${i}</button>`;}
-  cal.innerHTML=`<div class="calendar-head"><button type="button" class="calendar-nav" data-cal-prev aria-label="Mes anterior">‹</button><strong>${esc(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><button type="button" class="calendar-nav" data-cal-next aria-label="Mes siguiente">›</button></div><div class="calendar-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-grid">${cells}</div><div class="calendar-legend"><span><i class="legend-dot confirmed"></i>Ocupada</span><span><i class="legend-dot pending"></i>Retenida</span><span><i class="legend-dot holiday"></i>Festivo</span><span><i class="legend-dot holiday-eve"></i>Víspera de festivo</span></div>`;
+  cal.innerHTML=`<div class="calendar-head"><button type="button" class="calendar-nav" data-cal-prev aria-label="Mes anterior">‹</button><strong>${esc(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><button type="button" class="calendar-nav" data-cal-next aria-label="Mes siguiente">›</button></div><div class="calendar-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-grid">${cells}</div><div class="calendar-legend"><span><i class="legend-dot confirmed"></i>Ocupada</span><span><i class="legend-dot pending"></i>Retenida</span><span><i class="legend-dot holiday"></i>Festivo</span><span><i class="legend-dot holiday-eve"></i>Víspera de festivo</span><span><i class="legend-dot normal"></i>Días normales</span><span><i class="legend-dot fulfilled"></i>Días cumplidos</span></div>`;
 
   // Los botones de navegación reciben su propio manejador cada vez que se
   // pinta el calendario. Esto evita depender de la propagación del evento
