@@ -296,8 +296,17 @@ function renderBookingCalendar(state){
   prev?.addEventListener('click',e=>goMonth(-1,e));
   next?.addEventListener('click',e=>goMonth(1,e));
 }
+function placeBookingCalendar(cal,target){
+  if(!cal)return;
+  const input=document.querySelector(`#${target}`);
+  const wrap=input?.closest('.date-picker-wrap');
+  if(!wrap)return;
+  // En móvil el calendario siempre queda inmediatamente después del campo que lo abrió.
+  // En escritorio conserva el mismo bloque de flujo y evita superposiciones.
+  wrap.insertAdjacentElement('afterend',cal);
+}
 function openBookingCalendar(target,state){
-  state.activeTarget=target;const iso=parseUserDate(document.querySelector(`#${target}`)?.value)||state.start||state.minDate||localISODate();const p=dateToParts(iso);state.year=p.y;state.month=p.m;state.open=true;const cal=document.querySelector('#bookingCalendar');if(cal){cal.hidden=false;document.querySelector(`#${target}`)?.setAttribute('aria-expanded','true');renderBookingCalendar(state);}}
+  state.activeTarget=target;const iso=parseUserDate(document.querySelector(`#${target}`)?.value)||state.start||state.minDate||localISODate();const p=dateToParts(iso);state.year=p.y;state.month=p.m;state.open=true;const cal=document.querySelector('#bookingCalendar');if(cal){placeBookingCalendar(cal,target);cal.hidden=false;document.querySelector(`#${target}`)?.setAttribute('aria-expanded','true');renderBookingCalendar(state);}}
 function closeBookingCalendar(){const cal=document.querySelector('#bookingCalendar');if(cal)cal.hidden=true;document.querySelectorAll('.booking-date-input').forEach(el=>el.setAttribute('aria-expanded','false'));}
 function setBookingInput(id,iso){const el=document.querySelector(`#${id}`);if(el){el.value=displayDate(iso);el.dataset.iso=iso;el.classList.remove('date-unavailable','date-invalid');}}
 function validateManualDate(id,state){const el=document.querySelector(`#${id}`);if(!el)return '';const iso=parseUserDate(el.value);el.classList.remove('date-unavailable','date-invalid');if(!iso){if(el.value.trim())el.classList.add('date-invalid');return '';}
@@ -390,7 +399,52 @@ async function initBooking(s){
   });
 }
 
-async function renderHome(){return;}
+function initOwnerContact(){
+ const btn=document.querySelector('#ownerContactBtn');
+ if(!btn||btn.dataset.bound==='1')return;
+ btn.dataset.bound='1';
+ btn.addEventListener('click',()=>{
+   const modal=document.createElement('div');modal.className='modal-backdrop owner-contact-backdrop';
+   modal.innerHTML=`<div class="modal-card owner-contact-modal" role="dialog" aria-modal="true" aria-labelledby="ownerContactTitle">
+     <div class="section-head"><div><p class="eyebrow">PARA PROPIETARIOS</p><h2 id="ownerContactTitle">Incluye tu espacio</h2></div><button type="button" class="modal-close btn btn-light" aria-label="Cerrar">Cerrar</button></div>
+     <p class="muted">Cuéntanos brevemente qué espacio quieres incorporar a MiEspacioParaCelebrar y nos pondremos en contacto contigo.</p>
+     <form id="ownerContactForm" class="owner-contact-form">
+       <label>Nombre y apellidos<input id="contactName" autocomplete="name" required maxlength=120></label>
+       <label>Email<input id="contactEmail" type="email" autocomplete="email" required maxlength=160></label>
+       <label>Teléfono<input id="contactPhone" type="tel" autocomplete="tel" maxlength=30></label>
+       <label>Nombre del espacio<input id="contactSpace" required maxlength=160></label>
+       <label>Localidad<input id="contactCity" maxlength=120></label>
+       <label>Mensaje <span class="micro">(opcional)</span><textarea id="contactMessage" rows=4 maxlength=2000 placeholder="Cuéntanos cualquier detalle que consideres importante."></textarea></label>
+       <input id="contactWebsite" class="owner-contact-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
+       <button class="btn btn-dark full" id="ownerContactSend" type="submit">Enviar solicitud</button>
+       <p id="ownerContactMsg" class="message" aria-live="polite"></p>
+     </form>
+   </div>`;
+   document.body.appendChild(modal);
+   const close=()=>modal.remove();
+   modal.querySelector('.modal-close').onclick=close;
+   modal.addEventListener('click',e=>{if(e.target===modal)close();});
+   modal.querySelector('#contactName').focus();
+   modal.querySelector('#ownerContactForm').addEventListener('submit',async e=>{
+     e.preventDefault();
+     const msg=modal.querySelector('#ownerContactMsg'),send=modal.querySelector('#ownerContactSend');
+     const v=id=>modal.querySelector(id).value.trim();
+     if(v('#contactWebsite'))return;
+     const email=v('#contactEmail'),phone=v('#contactPhone');
+     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Introduce un email válido.';return;}
+     if(phone&&!/^[0-9+() .-]{6,30}$/.test(phone)){msg.textContent='Introduce un teléfono válido.';return;}
+     send.disabled=true;msg.textContent='Enviando solicitud…';
+     const client=await getClient();
+     if(!client){msg.textContent='No se ha podido conectar con el sistema. Inténtalo de nuevo.';send.disabled=false;return;}
+     const {error}=await client.rpc('submit_space_inclusion_request',{p_name:v('#contactName'),p_email:email,p_phone:phone||null,p_space_name:v('#contactSpace'),p_city:v('#contactCity')||null,p_message:v('#contactMessage')||null,p_website:v('#contactWebsite')||null});
+     if(error){console.error('Error enviando solicitud de incorporación:',error);msg.textContent=error.message||'No se ha podido enviar la solicitud.';send.disabled=false;return;}
+     msg.textContent='Solicitud enviada correctamente. El administrador se pondrá en contacto contigo.';
+     modal.querySelectorAll('input,textarea,button').forEach(el=>{if(el!==modal.querySelector('.modal-close'))el.disabled=true;});
+     setTimeout(close,1800);
+   });
+ });
+}
+async function renderHome(){initOwnerContact();}
 async function renderSpacesMap(){const map=document.querySelector('#spacesMap');if(!map)return;const spaces=window.__publicSpaces||await getPublicSpaces();initMap('spacesMap',spaces,false);}
 
 async function initPrivateLogin(){const form=document.querySelector('#loginForm');if(!form)return;const msg=document.querySelector('#loginMessage');if(!SUPABASE_ANON_KEY){msg.textContent='Falta la clave pública de Supabase en la configuración.';return;}if(!window.supabase){msg.textContent='No se ha podido cargar la conexión con Supabase. Recarga la página.';return;}const client=await getClient();if(!client){msg.textContent='No se ha podido inicializar la conexión con Supabase.';return;}try{const {data:{session},error:sessionError}=await client.auth.getSession();if(sessionError)throw sessionError;if(session){location.href='area-privada.html';return;}}catch(error){console.error('Error comprobando la sesión:',error);msg.textContent='No se ha podido comprobar la conexión con Supabase.';return;}form.addEventListener('submit',async e=>{e.preventDefault();msg.textContent='Accediendo…';const email=document.querySelector('#loginEmail').value.trim(),password=document.querySelector('#loginPassword').value;const {error}=await client.auth.signInWithPassword({email,password});if(error){console.error('Error de acceso:',error);msg.textContent='No se ha podido iniciar sesión. Comprueba el correo y la contraseña.';return;}location.href='area-privada.html';});}
@@ -404,8 +458,7 @@ async function renderPrivateArea(){
  document.querySelector('#privateRole').textContent=profile.role==='admin'?'Administrador':'Propietario';
  document.querySelector('#logoutBtn').addEventListener('click',async()=>{await client.auth.signOut();location.href='acceso.html';});
  if(profile.role==='admin'){
-   document.querySelector('#adminLink').hidden=false;
-   document.querySelector('#ownerContent').innerHTML='<p class="muted">Área de administración disponible desde el panel.</p>';
+   location.href='admin.html';
    return;
  }
  const {data:ownerId,error:ownerError}=await client.rpc('get_my_owner_id');
@@ -491,3 +544,4 @@ function modalShell(title,body){const modal=document.createElement('div');modal.
 function openOwnerEditor(client){const modal=modalShell('Nuevo propietario',`<div class="admin-form-grid"><label>Nombre<input id="ownFirst" required></label><label>Apellidos<input id="ownLast" required></label><label>Email<input id="ownEmail" type="email" required></label><label>Contraseña inicial<input id="ownPass" type="password" minlength="6" required></label><label>Teléfono<input id="ownPhone"></label><label>Dirección<input id="ownAddress"></label><label>Localidad<input id="ownCity"></label><label>Código postal<input id="ownPostal"></label><label>Nombre fiscal<input id="ownLegal"></label><label>NIF/CIF<input id="ownTax"></label></div><button id="ownSave" class="btn btn-dark full" type="button">Crear propietario</button><p id="ownMsg" class="message"></p>`);modal.querySelector('#ownSave').onclick=async()=>{const msg=modal.querySelector('#ownMsg'),v=id=>modal.querySelector(id).value.trim();msg.textContent='Creando…';const {data:{session}}=await client.auth.getSession();if(!session){msg.textContent='Sesión no válida.';return;}try{const res=await fetch(`${SUPABASE_URL}/functions/v1/create-owner`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({email:v('#ownEmail'),password:modal.querySelector('#ownPass').value,first_name:v('#ownFirst'),last_name:v('#ownLast'),phone:v('#ownPhone')||null,address:v('#ownAddress')||null,city:v('#ownCity')||null,postal_code:v('#ownPostal')||null,legal_name:v('#ownLegal')||null,tax_id:v('#ownTax')||null})});const data=await res.json();if(!res.ok)throw new Error(data.error||'No se pudo crear el propietario');msg.textContent='Propietario creado correctamente.';setTimeout(()=>{modal.remove();initAdminArea();},600);}catch(e){msg.textContent=e.message;}};}
 function openSpaceEditor(client,owners){if(!owners.length){alert('Primero debes crear un propietario.');return;}const options=owners.filter(o=>o.active).map(o=>`<option value="${esc(o.owner_id)}">${esc((o.first_name||'')+' '+(o.last_name||'')+' · '+o.email)}</option>`).join('');const modal=modalShell('Nuevo local',`<div class="admin-form-grid"><label>Propietario<select id="spOwner">${options}</select></label><label>Nombre del local<input id="spName" required></label><label>Localidad<input id="spCity" value="Lucena"></label><label>Provincia<input id="spProvince" value="Córdoba"></label><label>Precio lunes–jueves (€)<input id="spWeek" type="number" min="0" step="0.01"></label><label>Precio viernes (€)<input id="spFri" type="number" min="0" step="0.01"></label><label>Precio sábado (€)<input id="spSat" type="number" min="0" step="0.01"></label><label>Precio domingo (€)<input id="spSun" type="number" min="0" step="0.01"></label><label>Fianza (€)<input id="spDep" type="number" min="0" step="0.01"><span class="micro">Vacío = sin fianza.</span></label><label>Inicio actividad<input id="spFrom" type="date"></label><label>Fin actividad<input id="spUntil" type="date"></label><label>Dirección<input id="spAddress"></label><label>Latitud<input id="spLat" type="number" step="0.000001"></label><label>Longitud<input id="spLng" type="number" step="0.000001"></label><label>Descripción<textarea id="spDesc"></textarea></label></div><button id="spLocate" class="btn btn-light" type="button">Ubicar dirección en el mapa</button><button id="spSave" class="btn btn-dark full" type="button">Crear local</button><p id="spMsg" class="message"></p>`);modal.querySelector('#spLocate').onclick=async()=>{const msg=modal.querySelector('#spMsg');const address=modal.querySelector('#spAddress').value.trim();if(!address){msg.textContent='Introduce primero una dirección.';return;}msg.textContent='Buscando ubicación…';const found=await geocodeSpace({address,city:modal.querySelector('#spCity').value.trim(),province:modal.querySelector('#spProvince').value.trim()});if(!Number.isFinite(Number(found.latitude))||!Number.isFinite(Number(found.longitude))){msg.textContent='No se ha encontrado esa dirección. Revisa la dirección e inténtalo de nuevo.';return;}modal.querySelector('#spLat').value=Number(found.latitude).toFixed(6);modal.querySelector('#spLng').value=Number(found.longitude).toFixed(6);msg.textContent='Ubicación encontrada. Guarda el local.';};modal.querySelector('#spSave').onclick=async()=>{const msg=modal.querySelector('#spMsg'),v=id=>modal.querySelector(id).value.trim(),num=id=>v(id)===''?null:Number(v(id));msg.textContent='Creando…';const {data,error}=await client.rpc('admin_create_space',{p_owner_id:v('#spOwner'),p_name:v('#spName'),p_city:v('#spCity')||null,p_province:v('#spProvince')||null,p_description:v('#spDesc')||null,p_weekday_price:num('#spWeek'),p_friday_price:num('#spFri'),p_saturday_price:num('#spSat'),p_sunday_price:num('#spSun'),p_deposit:num('#spDep'),p_address:v('#spAddress')||null,p_latitude:num('#spLat'),p_longitude:num('#spLng'),p_active:true,p_active_from:v('#spFrom')||null,p_active_until:v('#spUntil')||null});if(error){msg.textContent=error.message;return;}msg.textContent='Local creado correctamente.';setTimeout(()=>{modal.remove();initAdminArea();},600);};}
 function openAdminEditor(id,s,client){const modal=document.createElement('div');modal.className='modal-backdrop';modal.innerHTML=`<div class="modal-card"><div class="section-head"><div><p class="eyebrow">EDITAR LOCAL</p><h2>${esc(s.name)}</h2></div><button class="modal-close btn btn-light" type="button">Cerrar</button></div><div class="admin-form-grid"><label>Publicado como activo<input id="admActive" type="checkbox" ${s.active?'checked':''}></label><label>Inicio de actividad<input id="admFrom" type="date" value="${esc(s.active_from||'')}"></label><label>Fin de actividad<input id="admUntil" type="date" value="${esc(s.active_until||'')}"></label><label>Lunes–jueves (€)<input id="admWeekday" type="number" min="0" step="0.01" value="${s.weekday_price??''}"></label><label>Viernes (€)<input id="admFriday" type="number" min="0" step="0.01" value="${s.friday_price??''}"></label><label>Sábado (€)<input id="admSaturday" type="number" min="0" step="0.01" value="${s.saturday_price??''}"></label><label>Domingo (€)<input id="admSunday" type="number" min="0" step="0.01" value="${s.sunday_price??''}"></label><label>Fianza (€)<input id="admDeposit" type="number" min="0" step="0.01" value="${s.deposit==null?'':s.deposit}"><span class="micro">Vacío = sin fianza.</span></label><label>Dirección<input id="admAddress" type="text" value="${esc(s.address||'')}"></label><label>Latitud<input id="admLat" type="number" step="0.000001" value="${s.latitude??''}"></label><label>Longitud<input id="admLng" type="number" step="0.000001" value="${s.longitude??''}"></label></div><button id="admLocate" class="btn btn-light" type="button">Ubicar dirección en el mapa</button><button id="admSave" class="btn btn-dark full" type="button">Guardar cambios</button><p id="admEditorMsg" class="message"></p></div>`;document.body.appendChild(modal);modal.querySelector('.modal-close').onclick=()=>modal.remove();modal.querySelector('#admLocate').onclick=async()=>{const msg=modal.querySelector('#admEditorMsg');const address=modal.querySelector('#admAddress').value.trim();if(!address){msg.textContent='Introduce primero una dirección.';return;}msg.textContent='Buscando ubicación…';const found=await geocodeSpace({address,city:s.city,province:s.province});if(!Number.isFinite(Number(found.latitude))||!Number.isFinite(Number(found.longitude))){msg.textContent='No se ha encontrado esa dirección. Revisa la dirección e inténtalo de nuevo.';return;}modal.querySelector('#admLat').value=Number(found.latitude).toFixed(6);modal.querySelector('#admLng').value=Number(found.longitude).toFixed(6);msg.textContent='Ubicación encontrada. Guarda los cambios.';};modal.querySelector('#admSave').onclick=async()=>{const msg=modal.querySelector('#admEditorMsg');const val=id=>modal.querySelector(id).value;const num=id=>val(id)===''?null:Number(val(id));msg.textContent='Guardando…';const {error}=await client.rpc('admin_update_space',{p_space_id:id,p_active:modal.querySelector('#admActive').checked,p_active_from:val('#admFrom')||null,p_active_until:val('#admUntil')||null,p_weekday_price:num('#admWeekday'),p_friday_price:num('#admFriday'),p_saturday_price:num('#admSaturday'),p_sunday_price:num('#admSunday'),p_deposit:num('#admDeposit'),p_address:val('#admAddress')||null,p_latitude:num('#admLat'),p_longitude:num('#admLng')});if(error){msg.textContent=error.message;return;}modal.remove();initAdminArea();};}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initOwnerContact);}else{initOwnerContact();}

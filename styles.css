@@ -160,3 +160,81 @@
 .check-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 @media (max-width:700px){.package-grid{grid-template-columns:1fr}.package-card{padding:16px}}
 .service-description{display:block;margin-top:4px;line-height:1.35}
+
+
+/* MOBILE-2026-09-30 — interfaz compacta y navegación rápida */
+.btn-owner{background:#dfe4d2;color:var(--ink);border-color:#d2d8c2;font-weight:800}
+.btn-owner:hover{background:#d6dcc8}
+.owner-contact-form{display:grid;gap:12px;margin-top:18px}
+.owner-contact-form label{display:grid;gap:6px;font-weight:700;font-size:13px}
+.owner-contact-form input,.owner-contact-form textarea{width:100%;border:1px solid #cfcac1;border-radius:12px;padding:11px 12px;background:#fff;font:inherit}
+.owner-contact-form textarea{resize:vertical}
+.owner-contact-honeypot{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+.owner-contact-modal{max-width:650px}
+@media(max-width:850px){
+  .brand-hero{min-height:auto}
+  .brand-hero-inner{padding:38px 0 44px}
+  .brand-hero-logo{width:min(300px,78vw);margin-bottom:22px}
+  .brand-hero h1{font-size:40px;line-height:1.02;margin-bottom:16px}
+  .brand-hero .hero-copy{font-size:16px;line-height:1.48}
+  .hero-actions{gap:8px}
+  .hero-actions .btn{min-height:42px;padding:0 15px;font-size:13px}
+  .page-intro{padding:50px 0 38px}
+  .page-intro h1{font-size:40px;line-height:1.02;margin-bottom:16px}
+  .page-intro>div>p:last-child{font-size:16px;line-height:1.5}
+  .section h2{font-size:38px;line-height:1.04}
+  .intro-purpose h2{font-size:40px}
+  .spaces-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .space-tile{border-radius:16px}
+  .space-tile-photo{height:145px}
+  .space-tile-info{padding:11px 12px 13px}
+  .space-tile-info h2{font-size:19px;line-height:1.05;margin:0 0 4px}
+  .space-tile-info p{font-size:11px;line-height:1.3}
+  .space-tile-price{font-size:13px;line-height:1.25;margin-top:8px}
+  .space-tile .btn{min-height:36px;padding:0 9px;font-size:11px;margin-top:8px;width:100%}
+  .map-section{padding-top:12px}
+  .map{height:310px;min-height:310px;border-radius:16px}
+  .map-section .section-head{margin-bottom:18px}
+  .map-section .section-head .muted{font-size:14px}
+  .booking-calendar{position:relative;margin:8px 0 14px;padding:10px;border-radius:14px}
+  .calendar-head{grid-template-columns:36px 1fr 36px;gap:6px;margin-bottom:8px}
+  .calendar-head strong{font-size:15px}
+  .calendar-grid{gap:2px}
+  .calendar-day{height:36px;font-size:12px;border-radius:8px}
+  .calendar-nav{height:36px;width:36px}
+  .calendar-legend{gap:7px 10px;font-size:10px}
+  .availability-search-card{padding:18px;margin-bottom:28px}
+  .availability-search-card .date-picker-wrap{display:block;width:100%}
+  .availability-search-card .booking-date-input{height:44px}
+  .availability-search-card .btn{min-height:44px}
+  .owner-contact-modal{padding:20px;max-height:92vh}
+}
+@media(max-width:560px){
+  .container{width:min(100% - 24px,1160px)}
+  .site-header .nav{height:62px}
+  .brand-logo{width:auto;max-width:145px;height:42px;object-fit:contain}
+  .mobile-menu-toggle{width:40px;height:40px;border-radius:11px}
+  .brand-hero-inner{padding:30px 0 36px}
+  .brand-hero-logo{width:min(250px,70vw);margin-bottom:18px}
+  .brand-hero h1{font-size:34px}
+  .brand-hero .hero-copy{font-size:15px;line-height:1.48}
+  .hero-actions{flex-direction:column;align-items:stretch;margin-top:18px}
+  .hero-actions .btn{width:100%}
+  .page-intro{padding:38px 0 30px}
+  .page-intro h1{font-size:34px}
+  .section{padding:42px 0}
+  .section h2,.intro-purpose h2{font-size:34px}
+  .eyebrow{font-size:10px;letter-spacing:.14em;margin-bottom:10px}
+  .spaces-grid{gap:9px}
+  .space-tile-photo{height:125px}
+  .space-tile-info{padding:9px 10px 11px}
+  .space-tile-info h2{font-size:17px}
+  .space-tile-info p{font-size:10px}
+  .space-tile-price{font-size:12px;margin-top:6px}
+  .space-tile .btn{font-size:10px;min-height:34px}
+  .map{height:300px;min-height:300px}
+  .booking-calendar{margin:7px 0 12px;padding:9px}
+  .calendar-day{height:34px;font-size:12px}
+  .calendar-head strong{font-size:14px}
+  .calendar-nav{height:34px;width:34px}
+}
