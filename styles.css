@@ -280,3 +280,16 @@
   .nav nav.home-nav a,
   .nav nav.home-nav a.nav-cta{min-height:42px;padding:0 12px;font-size:12px}
 }
+
+/* V30 — botón activo del área privada: verde del logotipo */
+.private-nav .btn-dark{
+  background:#cacdbd;
+  border-color:#cacdbd;
+  color:#344234;
+  font-weight:800;
+}
+.private-nav .btn-dark:hover{
+  background:#c1c6b3;
+  border-color:#c1c6b3;
+  color:#344234;
+}
