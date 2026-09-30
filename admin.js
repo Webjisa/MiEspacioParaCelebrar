@@ -42,40 +42,300 @@
     if(!document.getElementById('mep-admin-responsive-fix')){
       const st=document.createElement('style');st.id='mep-admin-responsive-fix';
       st.textContent=`
-        .admin-shell,.admin-main,#adminView{min-width:0;max-width:100%}
-        .admin-main{overflow-x:hidden}
-        .admin-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-        .admin-table{width:100%;min-width:720px}
-        .admin-booking-actions{white-space:normal}
-        .admin-booking-actions .btn{margin:3px}
-        @media(max-width:760px){
-          .admin-main{width:100%;padding:0 10px 24px;box-sizing:border-box}
-          .admin-panel,.admin-card,.admin-section{width:100%;box-sizing:border-box}
-          .section-head{gap:10px;flex-wrap:wrap}
-          .admin-actions{display:grid;grid-template-columns:1fr;gap:10px}
-          .admin-actions .btn,.admin-filters select{width:100%;min-height:44px}
-          .admin-table-wrap{overflow:visible}
-          .admin-table{min-width:0;display:block}
-          .admin-table thead{display:none}
-          .admin-table tbody{display:grid;gap:12px}
-          .admin-table tr{display:block;background:#fff;border:1px solid #e1e3dc;border-radius:14px;padding:10px}
-          .admin-table td{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;padding:8px 0;border:0;word-break:break-word}
-          .admin-table td::before{content:attr(data-label);font-weight:700;color:#596153}
-          .admin-table td[data-label="Acciones"]{display:flex;flex-wrap:wrap;gap:8px;padding-top:12px}
-          .admin-table td[data-label="Acciones"]::before{display:none}
-          .admin-table td[data-label="Acciones"] .btn{flex:1 1 130px;min-height:44px}
-          .modal-card,.admin-modal{width:calc(100vw - 20px);max-width:none;max-height:90vh;overflow:auto;box-sizing:border-box}
-          .admin-form-grid{grid-template-columns:1fr !important}
-          .modal-actions{display:grid;grid-template-columns:1fr;gap:8px}
-          .modal-actions .btn,.admin-modal .btn.full{width:100%;min-height:44px}
-        }
-        @media(max-width:430px){
-          .admin-main{padding-left:6px;padding-right:6px}
-          .admin-table td{grid-template-columns:76px minmax(0,1fr);font-size:.93rem}
-          .admin-table td[data-label="Acciones"]{display:grid;grid-template-columns:1fr}
-          .admin-table td[data-label="Acciones"] .btn{width:100%}
-        }
-      `;
+/* =========================================================
+   MiEspacioParaCelebrar · RESPONSIVE ADMINISTRACIÓN v2
+   Objetivo: ningún botón ni contenido queda cortado en escritorio,
+   tablet, móvil vertical u horizontal.
+========================================================= */
+
+.admin-shell,
+.admin-shell *{box-sizing:border-box}
+.admin-shell{width:100%;min-width:0;max-width:100%;overflow:hidden}
+.admin-main{min-width:0;max-width:100%;width:100%;overflow-x:hidden}
+#adminView{width:100%;min-width:0;max-width:100%}
+
+/* Cabecera de cada pantalla */
+.admin-view-head,
+.admin-card-head,
+.section-head{
+  min-width:0;
+}
+.admin-view-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  flex-wrap:wrap;
+}
+.admin-view-head > *{min-width:0}
+.admin-view-head > .btn,
+.admin-view-head > button,
+.admin-view-head > select{flex:0 1 auto;max-width:100%}
+
+/* Tarjetas y formularios */
+.admin-card,
+.admin-panel,
+.admin-section,
+.admin-dashboard-grid > section{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+.admin-card{overflow:hidden}
+.admin-form-grid{
+  width:100%;
+  min-width:0;
+}
+.admin-form-grid label,
+.admin-form-grid input,
+.admin-form-grid select,
+.admin-form-grid textarea{
+  min-width:0;
+  max-width:100%;
+}
+.admin-form-grid input,
+.admin-form-grid select,
+.admin-form-grid textarea{width:100%}
+
+/* Botones: nunca desbordan su contenedor */
+.admin-shell .btn,
+.admin-shell button,
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea{
+  max-width:100%;
+}
+.admin-shell .btn{
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.2;
+  min-height:42px;
+}
+.admin-shell .full{width:100%}
+
+/* TABLAS DESKTOP/TABLET ---------------------------------- */
+.admin-table-wrap{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+}
+.admin-table{
+  width:100%;
+  min-width:760px;
+  max-width:none;
+  table-layout:fixed;
+}
+.admin-table th,
+.admin-table td{
+  min-width:0;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  vertical-align:middle;
+}
+.admin-table td.table-actions,
+.admin-table td[data-label="Acciones"]{
+  overflow:visible;
+}
+.admin-table td.table-actions,
+.admin-table td[data-label="Acciones"]{
+  display:table-cell;
+  vertical-align:middle;
+  white-space:normal;
+}
+.admin-table td.table-actions .btn,
+.admin-table td[data-label="Acciones"] .btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:auto;
+  min-width:94px;
+  max-width:100%;
+  margin:4px 2px;
+  white-space:normal !important;
+  vertical-align:middle;
+}
+/* El último campo recibe espacio suficiente para acciones */
+.admin-table th:last-child,
+.admin-table td:last-child{width:23%}
+.admin-table th:nth-last-child(2),
+.admin-table td:nth-last-child(2){width:14%}
+
+/* Para tablas de datos muy anchas (emails/encuestas), el scroll queda
+   dentro de la tarjeta, nunca en toda la página. */
+.admin-table-wrap::-webkit-scrollbar{height:8px}
+
+/* Listados y bloques internos */
+.admin-list-row,
+.block-list > div,
+.photo-grid,
+.tool-tabs{
+  min-width:0;
+  max-width:100%;
+}
+.photo-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.tool-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.tool-tabs button{flex:1 1 130px;min-height:42px}
+.block-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}
+.block-form label{min-width:0}
+.block-form input{width:100%;max-width:100%}
+
+/* MODALES */
+.modal-backdrop{
+  padding:16px;
+  overflow:auto;
+}
+.modal-card,
+.admin-modal{
+  width:min(920px,100%);
+  max-width:100%;
+  max-height:calc(100vh - 32px);
+  overflow:auto;
+  box-sizing:border-box;
+}
+.modal-title,
+.modal-actions{min-width:0}
+.modal-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.modal-title > *{min-width:0}
+.modal-x{flex:0 0 auto}
+
+/* TABLET */
+@media (max-width:1100px){
+  .admin-sidebar{width:250px;flex:0 0 250px}
+  .admin-main{padding-left:20px;padding-right:20px}
+  .admin-table{min-width:720px}
+  .block-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* MÓVIL VERTICAL Y HORIZONTAL */
+@media (max-width:760px){
+  .admin-shell{overflow:visible}
+  .admin-main{
+    width:100%;
+    max-width:100%;
+    padding:0 10px 28px;
+    overflow-x:hidden;
+  }
+  .admin-mobile-top{
+    position:sticky;
+    top:0;
+    z-index:30;
+    width:100%;
+  }
+  .admin-view-head{
+    align-items:stretch;
+    flex-direction:column;
+    gap:12px;
+  }
+  .admin-view-head > .btn,
+  .admin-view-head > button,
+  .admin-view-head > select{
+    width:100%;
+    flex:0 0 auto;
+  }
+  .admin-kpis{grid-template-columns:1fr 1fr !important}
+  .admin-dashboard-grid{grid-template-columns:1fr !important}
+
+  .admin-actions,
+  .admin-filters{
+    width:100%;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+  .admin-actions .btn,
+  .admin-filters select{width:100%;min-height:44px}
+
+  /* Todas las tablas se convierten en tarjetas */
+  .admin-table-wrap{overflow:visible}
+  .admin-table{
+    display:block;
+    width:100%;
+    min-width:0;
+    table-layout:auto;
+  }
+  .admin-table thead{display:none}
+  .admin-table tbody{display:grid;gap:12px}
+  .admin-table tr{
+    display:block;
+    width:100%;
+    min-width:0;
+    padding:12px 14px;
+    background:#fff;
+    border:1px solid #e1e3dc;
+    border-radius:16px;
+  }
+  .admin-table td{
+    display:grid;
+    grid-template-columns:minmax(78px,30%) minmax(0,1fr);
+    gap:10px;
+    width:100% !important;
+    padding:8px 0;
+    border:0;
+    min-width:0;
+  }
+  .admin-table td::before{
+    content:attr(data-label);
+    font-weight:700;
+    color:#596153;
+  }
+  .admin-table td[colspan]::before{display:none}
+  .admin-table td.table-actions,
+  .admin-table td[data-label="Acciones"]{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+    padding-top:12px;
+    border-top:1px solid #eceee8;
+  }
+  .admin-table td.table-actions::before,
+  .admin-table td[data-label="Acciones"]::before{display:none}
+  .admin-table td.table-actions .btn,
+  .admin-table td[data-label="Acciones"] .btn{
+    width:100%;
+    min-width:0;
+    min-height:46px;
+    margin:0;
+  }
+
+  .admin-form-grid{grid-template-columns:1fr !important}
+  .form-wide{grid-column:1/-1}
+  .block-form{grid-template-columns:1fr}
+  .block-form .btn{width:100%;min-height:46px}
+  .modal-backdrop{padding:10px}
+  .modal-card,
+  .admin-modal{
+    width:100%;
+    max-width:100%;
+    max-height:calc(100vh - 20px);
+    overflow:auto;
+  }
+  .modal-actions{display:grid;grid-template-columns:1fr;gap:8px}
+  .modal-actions .btn{width:100%;min-height:46px}
+  .photo-grid{grid-template-columns:1fr 1fr}
+}
+
+/* MÓVIL HORIZONTAL ESTRECHO */
+@media (max-width:760px) and (orientation:landscape){
+  .admin-main{padding-left:8px;padding-right:8px}
+  .admin-mobile-top{min-height:48px}
+  .admin-kpis{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+  .admin-dashboard-grid{grid-template-columns:1fr 1fr !important}
+  .photo-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .modal-card,.admin-modal{max-height:calc(100vh - 12px)}
+}
+
+/* MÓVIL MUY ESTRECHO */
+@media (max-width:430px){
+  .admin-main{padding-left:6px;padding-right:6px}
+  .admin-kpis{grid-template-columns:1fr !important}
+  .admin-table tr{padding:10px}
+  .admin-table td{grid-template-columns:74px minmax(0,1fr);font-size:.93rem}
+  .photo-grid{grid-template-columns:1fr}
+}
+`;
       document.head.appendChild(st);
     }
     root.innerHTML=`<div class="admin-shell">
