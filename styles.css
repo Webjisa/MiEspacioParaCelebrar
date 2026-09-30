@@ -327,118 +327,528 @@
   outline-offset:2px;
 }
 
-/* RESPONSIVE-FINAL-2026-09-30 — ajuste global de escritorio, tablet y móvil */
-.admin-table-wrap{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.admin-table{table-layout:fixed;min-width:820px}
-.admin-table th:last-child,.admin-table td:last-child{width:250px}
-.table-actions{white-space:normal!important}
-.table-actions .btn{margin:3px 4px 3px 0}
-.admin-main,.admin-card,.admin-panel,.booking-card,.modal-card{min-width:0}
-.admin-form-grid input,.admin-form-grid select,.admin-form-grid textarea{max-width:100%}
-.booking-actions{flex-wrap:wrap}
-.booking-actions .btn{flex:0 1 auto}
-.owner-space>div{min-width:0}
 
-@media (max-width:1050px){
-  .container{width:min(100% - 32px,1160px)}
-  .detail-main{grid-template-columns:1fr 320px;gap:40px}
-  .booking-grid{grid-template-columns:1fr 400px;gap:40px}
-  .admin-shell{grid-template-columns:210px minmax(0,1fr)}
-  .admin-main{padding:24px}
-  .admin-table{min-width:780px}
-  .admin-table th:last-child,.admin-table td:last-child{width:230px}
+/* ==========================================================
+   RESPONSIVE-FINAL-2026-09-30
+   Correcciones finales para escritorio, tablet, móvil vertical
+   y móvil horizontal. Se conserva todo el CSS anterior.
+   ========================================================== */
+
+/* Navegación unificada en todas las páginas */
+.site-header .container.nav{
+  width:100%;
+  max-width:1400px;
+  margin:0 auto;
+  padding-left:24px;
+  padding-right:24px;
+  box-sizing:border-box;
+}
+.site-header .brand{
+  display:flex;
+  align-items:center;
+  flex:0 0 auto;
+}
+.site-header .brand-logo{
+  display:block;
+  width:138px;
+  max-width:138px;
+  height:auto;
+  max-height:58px;
+  object-fit:contain;
+}
+.site-header .nav nav{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:18px;
+  min-width:0;
+}
+.site-header .nav nav a,
+.site-header .nav nav a:visited{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:46px;
+  padding:0 18px;
+  border:1px solid #d2d8c2;
+  border-radius:999px;
+  background:#dfe4d2;
+  color:#344234;
+  font-size:14px;
+  font-weight:800;
+  line-height:1.1;
+  text-align:center;
+  text-decoration:none;
+  white-space:nowrap;
+  box-shadow:none;
+  transition:background .18s ease,border-color .18s ease,transform .18s ease;
+}
+.site-header .nav nav a:hover,
+.site-header .nav nav a:focus-visible{
+  background:#d6dcc8;
+  border-color:#c8cfb7;
+  color:#344234;
+  transform:translateY(-1px);
+  text-decoration:none;
+}
+.site-header .nav nav a::after{
+  display:none!important;
+  content:none!important;
 }
 
-@media (min-width:701px) and (max-width:1100px) and (orientation:landscape){
-  .site-header .nav{gap:18px}
-  .nav nav{gap:14px}
-  .admin-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .admin-table-wrap{overflow-x:auto}
+/* Evita que los botones del encabezado provoquen desbordamiento */
+.site-header,
+.site-header .nav{
+  min-width:0;
+}
+.site-header .nav nav{
+  flex-wrap:wrap;
 }
 
-@media (max-width:800px){
-  .admin-table-wrap{overflow:visible}
-  .admin-table{min-width:0;width:100%;table-layout:auto}
-  .admin-table thead{display:none}
-  .admin-table tbody,.admin-table tr,.admin-table td{display:block;width:100%}
-  .admin-table tr{background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:12px;padding:10px}
-  .admin-table td{border:0;border-bottom:1px solid #eceae5;padding:9px 4px}
-  .admin-table td:last-child{width:auto;border-bottom:0;padding-bottom:4px}
-  .admin-table td:before{display:block;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
-  .admin-table td:nth-child(1):before{content:'Dato'}
-  .admin-table td:nth-child(2):before{content:'Información'}
-  .admin-table td:nth-child(3):before{content:'Estado'}
-  .admin-table td:nth-child(4):before{content:'Acciones'}
-  .table-actions{display:flex;flex-wrap:wrap;gap:6px}
-  .table-actions .btn{flex:1 1 150px;margin:0;min-width:0}
+/* Tablas de administración: nunca se cortan por el borde */
+.admin-table-wrap{
+  width:100%;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:visible;
+  -webkit-overflow-scrolling:touch;
+}
+.admin-table{
+  width:100%;
+  min-width:820px;
+}
+.admin-table td,
+.admin-table th{
+  overflow-wrap:anywhere;
+}
+.table-actions,
+.admin-table td:last-child{
+  width:auto;
+}
+.table-actions{
+  white-space:normal;
+}
+.table-actions .btn,
+.admin-table td:last-child .btn{
+  margin:2px 0;
+  white-space:nowrap;
 }
 
-@media (max-width:700px){
-  .container{width:min(100% - 24px,1160px)}
-  .nav{gap:10px}
-  .hero{min-height:560px}
-  .hero-content{padding:65px 0}
-  .booking-grid,.details-grid,.detail-main{display:block}
-  .booking-grid>div+div,.detail-summary{margin-top:28px}
-  .booking-card{padding:20px}
-  .booking-item{padding:18px}
-  .booking-item h3{font-size:20px}
-  .booking-meta{gap:10px}
-  .booking-actions{display:grid;grid-template-columns:1fr;gap:8px}
-  .booking-actions .btn{width:100%;min-width:0}
-  .owner-space{padding:20px}
-  .admin-view-head{gap:14px}
-  .admin-view-head .btn{width:100%}
-  .admin-actions{display:grid;grid-template-columns:1fr}
-  .admin-actions .btn{width:100%}
-  .modal-backdrop{padding:8px}
-  .modal-card{max-height:94vh;padding:18px}
-  .modal-title{gap:10px}
-  .modal-title h2{font-size:24px}
-  .modal-actions{display:grid;grid-template-columns:1fr}
-  .modal-actions .btn{width:100%;margin:0}
-  .feature-add{display:grid;grid-template-columns:1fr}
-  .feature-add .btn{width:100%}
-  .block-list>div,.feature-admin-list>div{align-items:flex-start;flex-direction:column}
-  .feature-admin-list>div>span:last-child{display:flex;flex-wrap:wrap;width:100%}
-  .feature-admin-list>div>span:last-child .btn{flex:1 1 120px}
-  .photo-actions .btn{flex:1 1 130px}
-  .photo-actions{width:100%}
-  .admin-filters select{width:100%;min-width:0}
-  .admin-sidebar{width:min(235px,82vw)}
+/* Botoneras y formularios generales */
+.admin-actions,
+.modal-actions,
+.photo-actions,
+.feature-add{
+  min-width:0;
+}
+.admin-actions .btn,
+.modal-actions .btn,
+.photo-actions .btn{
+  max-width:100%;
+}
+.admin-form-grid>*{
+  min-width:0;
+}
+.admin-form-grid input,
+.admin-form-grid select,
+.admin-form-grid textarea{
+  max-width:100%;
 }
 
-@media (max-width:560px){
-  .admin-table tr{padding:8px}
-  .admin-table td{padding:8px 3px}
-  .table-actions{display:grid}
-  .table-actions .btn{width:100%;flex:1 1 auto}
-  .admin-main{padding:14px}
-  .admin-card{padding:15px}
-  .admin-panel{padding:20px}
-  .booking-card{padding:17px}
-  .booking-item{padding:16px}
-  .booking-meta{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .booking-meta span{min-width:0}
-  .booking-financials{max-width:none;padding:13px 14px}
-  .review-grid{grid-template-columns:1fr}
-  .availability-search-card{padding:15px}
+/* Reservas: el contenido puede crecer sin empujar la pantalla */
+.booking-item,
+.booking-item-main,
+.booking-item-head,
+.booking-actions{
+  min-width:0;
+}
+.booking-actions{
+  flex-wrap:wrap;
+}
+.booking-actions .btn{
+  white-space:nowrap;
 }
 
-@media (max-width:850px) and (orientation:landscape){
-  .site-header .nav{height:58px}
-  .hero{min-height:430px}
-  .hero-content{padding:45px 0}
-  .hero h1{font-size:clamp(38px,7vw,58px)}
-  .section{padding:45px 0}
-  .page-intro{padding:50px 0 35px}
-  .space-detail-hero{min-height:420px}
-  .space-detail-heading{padding:50px 0 40px}
-  .booking-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-  .booking-grid>div+div{margin-top:0}
-  .booking-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .admin-main{padding:18px}
-  .admin-dashboard-grid,.calendar-admin-grid{grid-template-columns:1fr 1fr}
-  .admin-form-grid{grid-template-columns:1fr 1fr}
+/* Modales: siempre dentro de la ventana */
+.modal-backdrop{
+  box-sizing:border-box;
+  overflow:auto;
+}
+.modal-card{
+  box-sizing:border-box;
+  min-width:0;
+}
+.modal-card img{
+  max-width:100%;
 }
 
+/* Imágenes de contenido: no fuerzan el ancho de la página */
+.space-detail-image,
+.hero-media,
+.gallery,
+.photo-admin{
+  min-width:0;
+}
+.space-detail-image img,
+.hero-media img,
+.gallery img,
+.photo-admin img{
+  max-width:100%;
+}
+
+/* TABLET / PANTALLAS MEDIANAS */
+@media (max-width:1100px){
+  .site-header .container.nav{
+    padding-left:18px;
+    padding-right:18px;
+    gap:16px;
+  }
+  .site-header .brand-logo{
+    width:118px;
+    max-width:118px;
+  }
+  .site-header .nav nav{
+    gap:9px;
+  }
+  .site-header .nav nav a,
+  .site-header .nav nav a:visited{
+    min-height:44px;
+    padding:0 14px;
+    font-size:13px;
+  }
+  .booking-grid{
+    grid-template-columns:minmax(0,1fr) 400px;
+    gap:40px;
+  }
+}
+
+/* MÓVIL */
+@media (max-width:760px){
+  .container{
+    width:min(100% - 24px,1160px);
+  }
+
+  .site-header .container.nav{
+    padding:10px 12px;
+    gap:10px;
+  }
+
+  .site-header .brand-logo{
+    width:100px;
+    max-width:100px;
+    max-height:50px;
+  }
+
+  /* Si existe el menú móvil del proyecto, queda operativo.
+     Si no existe, los enlaces se muestran en bloque para no perder navegación. */
+  .site-header .nav>nav{
+    min-width:0;
+  }
+
+  .site-header .nav nav a,
+  .site-header .nav nav a:visited{
+    min-height:42px;
+    padding:0 12px;
+    font-size:12px;
+  }
+
+  .hero{
+    min-height:520px;
+  }
+  .hero-content{
+    padding:70px 0;
+  }
+
+  .space-card,
+  .booking-grid,
+  .detail-main{
+    min-width:0;
+  }
+
+  .booking-grid{
+    grid-template-columns:1fr;
+  }
+
+  .booking-grid>div+div{
+    margin-top:30px;
+  }
+
+  .detail-main{
+    display:block;
+  }
+
+  .detail-summary{
+    margin-top:30px;
+  }
+
+  .owner-grid{
+    grid-template-columns:1fr;
+  }
+
+  .owner-space{
+    min-width:0;
+  }
+
+  .owner-date{
+    text-align:left;
+  }
+
+  .booking-item{
+    display:block;
+  }
+
+  .booking-actions{
+    width:100%;
+    margin-top:18px;
+  }
+
+  .booking-actions .btn{
+    flex:1 1 150px;
+  }
+
+  .admin-table-wrap{
+    overflow-x:auto;
+    width:100%;
+  }
+
+  .admin-table{
+    min-width:760px;
+  }
+
+  .admin-main{
+    min-width:0;
+  }
+
+  .admin-card,
+  .admin-panel{
+    min-width:0;
+    max-width:100%;
+  }
+
+  .admin-view-head{
+    min-width:0;
+  }
+
+  .admin-kpis{
+    min-width:0;
+  }
+
+  .photo-grid{
+    min-width:0;
+  }
+
+  .photo-admin{
+    min-width:0;
+  }
+
+  .modal-backdrop{
+    padding:8px;
+  }
+
+  .modal-card{
+    width:100%;
+    max-width:100%;
+    max-height:94vh;
+    overflow:auto;
+  }
+
+  .modal-title{
+    min-width:0;
+  }
+
+  .modal-title h2{
+    overflow-wrap:anywhere;
+  }
+}
+
+/* MÓVIL HORIZONTAL */
+@media (max-width:760px) and (orientation:landscape){
+  .site-header .container.nav{
+    padding-top:7px;
+    padding-bottom:7px;
+  }
+
+  .site-header .brand-logo{
+    width:92px;
+    max-width:92px;
+    max-height:44px;
+  }
+
+  .site-header .nav nav{
+    gap:6px;
+  }
+
+  .site-header .nav nav a,
+  .site-header .nav nav a:visited{
+    min-height:38px;
+    padding:0 10px;
+    font-size:11px;
+  }
+
+  .hero{
+    min-height:430px;
+  }
+
+  .hero-content{
+    padding:50px 0;
+  }
+
+  .brand-hero-inner{
+    padding:28px 0 35px;
+  }
+
+  .brand-hero{
+    min-height:auto;
+  }
+
+  .modal-card{
+    max-height:calc(100vh - 12px);
+  }
+
+  .admin-main{
+    padding-left:10px;
+    padding-right:10px;
+  }
+
+  .admin-kpis{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+
+  .admin-dashboard-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .photo-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+
+/* MÓVIL MUY ESTRECHO */
+@media (max-width:430px){
+  .site-header .container.nav{
+    padding-left:8px;
+    padding-right:8px;
+  }
+
+  .site-header .brand-logo{
+    width:88px;
+    max-width:88px;
+  }
+
+  .site-header .nav nav{
+    gap:5px;
+  }
+
+  .site-header .nav nav a,
+  .site-header .nav nav a:visited{
+    min-height:40px;
+    padding:0 9px;
+    font-size:11px;
+  }
+
+  .admin-main{
+    padding-left:6px;
+    padding-right:6px;
+  }
+
+  .admin-kpis{
+    grid-template-columns:1fr;
+  }
+
+  .booking-actions .btn{
+    flex-basis:100%;
+  }
+
+  .admin-table{
+    min-width:700px;
+  }
+}
+
+/* Corrección específica de textos largos en botones */
+.btn,
+.site-header .nav nav a,
+.private-nav .btn,
+.admin-table .btn{
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+
+/* No permitir que el contenido genere scroll horizontal */
+html,
+body{
+  max-width:100%;
+  overflow-x:hidden;
+}
+
+
+/* V32 — menú móvil unificado + acceso universal a Google Maps */
+@media(max-width:850px){
+  .site-header .nav>nav{
+    gap:8px;
+    padding:12px;
+    background:rgba(251,250,247,.98);
+    border:1px solid #d2d5c8;
+    border-top:1px solid #d2d5c8;
+    border-radius:0 0 18px 18px;
+    box-shadow:0 16px 30px rgba(0,0,0,.08);
+  }
+  .site-header .nav>nav a,
+  .site-header .nav>nav a.nav-cta,
+  .site-header .nav>nav a.active{
+    display:flex!important;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    min-height:48px;
+    padding:0 16px;
+    border:1px solid #d2d5c8!important;
+    border-radius:999px!important;
+    background:#cacdbd!important;
+    color:#344234!important;
+    font-size:14px;
+    font-weight:800;
+    text-decoration:none;
+    white-space:normal;
+    text-align:center;
+    box-shadow:none;
+  }
+  .site-header .nav>nav a+a{border-top:1px solid #d2d5c8!important}
+  .site-header .nav>nav a:hover,
+  .site-header .nav>nav a:focus-visible,
+  .site-header .nav>nav a.active,
+  .site-header .nav>nav a.nav-cta:hover{
+    background:#c1c6b3!important;
+    border-color:#c1c6b3!important;
+    color:#344234!important;
+  }
+}
+
+.map-popup-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:9px;
+}
+.map-popup-actions a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:34px;
+  padding:7px 11px;
+  border:1px solid #d2d5c8;
+  border-radius:999px;
+  background:#cacdbd;
+  color:#344234;
+  font-size:12px;
+  font-weight:800;
+  text-decoration:none;
+}
+.map-popup-actions a:hover{
+  background:#c1c6b3;
+  border-color:#c1c6b3;
+  color:#344234;
+}
+@media(max-width:560px){
+  .map-popup-actions{display:grid;grid-template-columns:1fr}
+  .map-popup-actions a{width:100%;min-height:38px;font-size:12px}
+}
