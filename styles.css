@@ -442,3 +442,259 @@
   .brand-hero .hero-copy{font-size:14px;line-height:1.42}
   .hero-actions{gap:8px}
 }
+
+/* ==========================================================
+   V32 — UNIFICACIÓN GLOBAL + HOMEPAGE + CALENDARIOS
+   ========================================================== */
+
+/* Campos unificados */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea{
+  border-radius:14px;
+  border-color:#cfcac1;
+}
+
+.booking-card .booking-date-input,
+.availability-search-card .booking-date-input{
+  height:52px;
+  border-radius:16px;
+  border:1px solid #cfcac1;
+  padding:0 48px 0 16px;
+  background:#fff;
+  font:inherit;
+  margin:0;
+  box-sizing:border-box;
+}
+
+.date-picker-wrap{
+  position:relative;
+  width:100%;
+  margin-bottom:18px;
+}
+
+.date-picker-toggle{
+  position:absolute;
+  right:8px;
+  top:8px;
+  width:36px;
+  height:36px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#344234;
+  font-size:18px;
+  line-height:1;
+  cursor:pointer;
+  z-index:3;
+}
+
+.date-picker-toggle:hover,
+.date-picker-toggle:focus-visible{
+  background:#f0eee8;
+  outline:none;
+}
+
+/* Calendario único: compacto y siempre asociado al campo que lo abre */
+.booking-calendar{
+  position:relative;
+  z-index:30;
+  width:min(370px,100%);
+  box-sizing:border-box;
+  margin:0 0 18px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 14px 35px rgba(0,0,0,.10);
+  touch-action:manipulation;
+}
+
+.booking-calendar[hidden]{display:none!important}
+
+.calendar-head{
+  display:grid;
+  grid-template-columns:34px 1fr 34px;
+  align-items:center;
+  gap:6px;
+  margin-bottom:8px;
+  text-align:center;
+}
+
+.calendar-head strong{font-size:15px}
+
+.calendar-nav{
+  width:34px;
+  height:34px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#fff;
+  color:var(--ink);
+  font-size:21px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.calendar-nav:hover{background:var(--soft)}
+
+.calendar-weekdays,
+.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:2px;
+}
+
+.calendar-weekdays{
+  margin-bottom:3px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:800;
+  text-align:center;
+}
+
+.calendar-day{
+  min-width:0;
+  height:34px;
+  border:1px solid transparent;
+  border-radius:8px;
+  background:#fff;
+  color:var(--ink);
+  font:inherit;
+  font-size:12px;
+  cursor:pointer;
+}
+
+.calendar-day:hover:not(:disabled){background:var(--soft)}
+.calendar-day.outside{color:#bdbab3}
+.calendar-day.today{font-weight:800;border-color:#aaa59c}
+.calendar-day.selected{background:#20201f;color:#fff;border-color:#20201f}
+.calendar-day.selected-start,.calendar-day.selected-end{font-weight:800}
+
+.calendar-legend{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:9px;
+  padding-top:8px;
+  border-top:1px solid var(--line);
+  font-size:10px;
+  color:var(--muted);
+}
+
+/* Portada compacta */
+@media(min-width:851px){
+  .brand-hero{
+    min-height:0;
+    height:320px;
+    max-height:320px;
+    overflow:hidden;
+    border-radius:0 0 16px 16px;
+  }
+
+  .brand-hero-inner{
+    max-width:900px;
+    width:100%;
+    padding:24px 0 26px;
+  }
+
+  .brand-hero .eyebrow{display:none}
+
+  .brand-hero h1{
+    font-size:clamp(38px,4vw,56px);
+    line-height:.98;
+    margin:0 0 12px;
+    max-width:650px;
+  }
+
+  .brand-hero .hero-copy{
+    max-width:650px;
+    font-size:15px;
+    line-height:1.4;
+  }
+
+  .hero-actions{margin-top:16px;gap:10px}
+  .hero-actions .btn{min-height:42px;padding:0 20px}
+
+  .home-logo-between-actions{
+    min-height:104px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--paper);
+  }
+
+  .home-logo-between-actions .container{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+
+  .home-logo-between-actions .brand-hero-logo{
+    display:block!important;
+    width:min(150px,20vw);
+    height:auto;
+    max-height:92px;
+    object-fit:contain;
+    margin:0;
+  }
+
+  .home-links{
+    margin-top:0;
+  }
+}
+
+/* Navegación por rol: las reglas JS también funcionan en el menú móvil */
+.site-header .nav>nav a[hidden]{display:none!important}
+
+body:has(#adminArea) .site-header .nav>nav a:not([hidden]){
+  display:inline-flex;
+}
+
+body:has(#privateArea) .site-header .nav>nav a[hidden]{display:none!important}
+
+/* En móvil no reintroducir enlaces ocultos con display!important */
+@media(max-width:850px){
+  .site-header .nav>nav a[hidden]{display:none!important}
+  .site-header .nav>nav a:not([hidden]){display:flex!important}
+  .home-logo-between-actions{
+    min-height:86px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .home-logo-between-actions .brand-hero-logo{
+    display:block!important;
+    width:min(130px,38vw);
+    height:auto;
+    max-height:78px;
+    object-fit:contain;
+    margin:0;
+  }
+}
+
+@media(max-width:560px){
+  .booking-card .booking-date-input,
+  .availability-search-card .booking-date-input{
+    height:48px;
+    border-radius:14px;
+  }
+
+  .date-picker-toggle{top:6px;width:36px;height:36px}
+
+  .booking-calendar{
+    width:min(350px,100%);
+    padding:9px;
+    border-radius:14px;
+  }
+
+  .calendar-day{height:34px;font-size:12px}
+  .calendar-nav{height:34px;width:34px}
+  .calendar-head strong{font-size:14px}
+}
+
+/* Formularios de administración con el mismo criterio visual */
+.admin-form-grid input:not([type="checkbox"]):not([type="radio"]),
+.admin-form-grid select,
+.admin-form-grid textarea{
+  border-radius:14px;
+}
