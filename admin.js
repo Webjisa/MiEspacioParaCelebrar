@@ -39,6 +39,45 @@
 
   function shell(){
     const root=document.querySelector('#adminArea');
+    if(!document.getElementById('mep-admin-responsive-fix')){
+      const st=document.createElement('style');st.id='mep-admin-responsive-fix';
+      st.textContent=`
+        .admin-shell,.admin-main,#adminView{min-width:0;max-width:100%}
+        .admin-main{overflow-x:hidden}
+        .admin-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+        .admin-table{width:100%;min-width:720px}
+        .admin-booking-actions{white-space:normal}
+        .admin-booking-actions .btn{margin:3px}
+        @media(max-width:760px){
+          .admin-main{width:100%;padding:0 10px 24px;box-sizing:border-box}
+          .admin-panel,.admin-card,.admin-section{width:100%;box-sizing:border-box}
+          .section-head{gap:10px;flex-wrap:wrap}
+          .admin-actions{display:grid;grid-template-columns:1fr;gap:10px}
+          .admin-actions .btn,.admin-filters select{width:100%;min-height:44px}
+          .admin-table-wrap{overflow:visible}
+          .admin-table{min-width:0;display:block}
+          .admin-table thead{display:none}
+          .admin-table tbody{display:grid;gap:12px}
+          .admin-table tr{display:block;background:#fff;border:1px solid #e1e3dc;border-radius:14px;padding:10px}
+          .admin-table td{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;padding:8px 0;border:0;word-break:break-word}
+          .admin-table td::before{content:attr(data-label);font-weight:700;color:#596153}
+          .admin-table td[data-label="Acciones"]{display:flex;flex-wrap:wrap;gap:8px;padding-top:12px}
+          .admin-table td[data-label="Acciones"]::before{display:none}
+          .admin-table td[data-label="Acciones"] .btn{flex:1 1 130px;min-height:44px}
+          .modal-card,.admin-modal{width:calc(100vw - 20px);max-width:none;max-height:90vh;overflow:auto;box-sizing:border-box}
+          .admin-form-grid{grid-template-columns:1fr !important}
+          .modal-actions{display:grid;grid-template-columns:1fr;gap:8px}
+          .modal-actions .btn,.admin-modal .btn.full{width:100%;min-height:44px}
+        }
+        @media(max-width:430px){
+          .admin-main{padding-left:6px;padding-right:6px}
+          .admin-table td{grid-template-columns:76px minmax(0,1fr);font-size:.93rem}
+          .admin-table td[data-label="Acciones"]{display:grid;grid-template-columns:1fr}
+          .admin-table td[data-label="Acciones"] .btn{width:100%}
+        }
+      `;
+      document.head.appendChild(st);
+    }
     root.innerHTML=`<div class="admin-shell">
       <aside class="admin-sidebar">
         <div class="admin-sidebar-brand"><img src="assets/logo-miespacio-v12.png" alt="MiEspacioParaCelebrar"><span>Administración</span></div>
@@ -174,7 +213,7 @@
       <label>Nombre<input id="name" required value="${esc(s?.name||'')}"></label>
       <label>Localidad<input id="city" value="${esc(s?.city||'')}"></label>
       <label>Provincia<input id="province" value="${esc(s?.province||'')}"></label>
-      <div class="form-wide"><p class="eyebrow">PRECIOS POR DÍA</p><div class="admin-form-grid"><label>Lunes (€)<input id="monday" type="number" min="0" step="0.01" value="${d(1)}"></label><label>Martes (€)<input id="tuesday" type="number" min="0" step="0.01" value="${d(2)}"></label><label>Miércoles (€)<input id="wednesday" type="number" min="0" step="0.01" value="${d(3)}"></label><label>Jueves (€)<input id="thursday" type="number" min="0" step="0.01" value="${d(4)}"></label><label>Viernes (€)<input id="friday" type="number" min="0" step="0.01" value="${d(5)}"></label><label>Sábado (€)<input id="saturday" type="number" min="0" step="0.01" value="${d(6)}"></label><label>Domingo (€)<input id="sunday" type="number" min="0" step="0.01" value="${d(7)}"></label><label><strong>Festivo (€)</strong><input id="holiday" type="number" min="0" step="0.01" value="${s?.holiday_price??0}"></label><label><strong>Víspera de festivo (€)</strong><input id="holidayEve" type="number" min="0" step="0.01" value="${s?.eve_holiday_price??0}"></label></div></div>
+      <div class="form-wide"><p class="eyebrow">PRECIOS POR DÍA</p><div class="admin-form-grid"><label>Lunes (€)<input id="monday" type="number" min="0" step="0.01" value="${d(1)}"></label><label>Martes (€)<input id="tuesday" type="number" min="0" step="0.01" value="${d(2)}"></label><label>Miércoles (€)<input id="wednesday" type="number" min="0" step="0.01" value="${d(3)}"></label><label>Jueves (€)<input id="thursday" type="number" min="0" step="0.01" value="${d(4)}"></label><label>Viernes (€)<input id="friday" type="number" min="0" step="0.01" value="${d(5)}"></label><label>Sábado (€)<input id="saturday" type="number" min="0" step="0.01" value="${d(6)}"></label><label>Domingo (€)<input id="sunday" type="number" min="0" step="0.01" value="${d(7)}"></label><label><strong>Festivo (€)</strong><input id="holiday" type="number" min="0" step="0.01" value="${s?.holiday_price??0}"></label></div></div>
       <label>Hora de apertura<input id="opening" type="time" value="${esc(s?.opening_time||'11:00')}" ></label>
       <label>Hora de cierre<input id="closing" type="time" value="${esc(s?.closing_time||'23:00')}" ></label>
       <label>Fianza (€)<input id="deposit" type="number" min="0" step="0.01" value="${s?.deposit??''}"></label>
@@ -200,8 +239,6 @@
       if(dp.error){msg.textContent=dp.error.message;msg.classList.add('error');return;}
       const hp=await c.rpc('admin_save_space_holiday_price',{p_space_id:spaceId,p_holiday_price:num(m,'#holiday')??0});
       if(hp.error){msg.textContent=hp.error.message;msg.classList.add('error');return;}
-      const hep=await c.rpc('admin_save_space_eve_holiday_price',{p_space_id:spaceId,p_eve_holiday_price:num(m,'#holidayEve')??0});
-      if(hep.error){msg.textContent=hep.error.message;msg.classList.add('error');return;}
       m.remove();await refresh();renderView('spaces');
     };
   }
@@ -498,11 +535,90 @@
 
   function renderBookings(root){
     const rows=[...state.bookings].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
-    root.innerHTML=header('RESERVAS','Solicitudes y reservas')+`<div class="admin-filters"><select id="bookingFilter"><option value="all">Todos los estados</option><option value="pending">Pendientes</option><option value="confirmed">Confirmadas</option><option value="rejected">Rechazadas</option><option value="expired">Caducadas</option></select></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Espacio</th><th>Cliente</th><th>Fechas</th><th>Limpieza</th><th>Estado</th><th></th></tr></thead><tbody id="bookingRows"></tbody></table></div></div><p class="admin-message"></p>`;
-    const paint=()=>{const f=root.querySelector('#bookingFilter').value;const filtered=f==='all'?rows:rows.filter(b=>b.booking_status===f);root.querySelector('#bookingRows').innerHTML=filtered.length?filtered.map(b=>`<tr><td><strong>${esc(b.space_name)}</strong></td><td><strong>${esc(b.customer_name)}</strong><span class="table-sub">${esc(b.customer_email)}<br>${esc(b.customer_phone)}</span></td><td>${date(b.start_date)} → ${date(b.end_date)}<span class="table-sub">${b.total_days} día(s)</span></td><td>${b.cleaning_requested?'Sí':'No'}</td><td><span class="status status-${esc(b.booking_status)}">${labelStatus(b.booking_status)}</span></td><td>${b.booking_status==='pending'?`<button class="btn btn-dark" data-confirm="${b.id}">Aceptar</button> <button class="btn btn-light" data-reject="${b.id}">Rechazar</button>`:''}</td></tr>`).join(''):`<tr><td colspan="6" class="muted">No hay reservas en este estado.</td></tr>`;root.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>decideBooking(b.dataset.confirm,true));root.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>decideBooking(b.dataset.reject,false));};
-    root.querySelector('#bookingFilter').onchange=paint;paint();
-    async function decideBooking(id,confirm){const q=await state.client.rpc(confirm?'admin_confirm_booking':'admin_reject_booking',{p_booking_id:id});if(q.error){toast(root,q.error.message,true);return;}await refresh();renderView('bookings');}
+    root.innerHTML=header('RESERVAS','Solicitudes y reservas')+`<div class="admin-filters"><select id="bookingFilter">
+      <option value="all">Todos los estados</option>
+      <option value="pending">Pendientes</option>
+      <option value="confirmed">Confirmadas</option>
+      <option value="rejected">Rechazadas</option>
+      <option value="expired">Caducadas</option>
+      <option value="cancelled">Canceladas</option>
+    </select></div><div class="admin-card"><div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr><th>Espacio</th><th>Cliente</th><th>Fechas</th><th>Limpieza</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody id="bookingRows"></tbody></table></div></div><p class="admin-message"></p>`;
+
+    const paint=()=>{
+      const f=root.querySelector('#bookingFilter').value;
+      const filtered=f==='all'?rows:rows.filter(b=>b.booking_status===f);
+      root.querySelector('#bookingRows').innerHTML=filtered.length
+        ? filtered.map(b=>`<tr>
+            <td data-label="Espacio"><strong>${esc(b.space_name)}</strong></td>
+            <td data-label="Cliente"><strong>${esc(b.customer_name)}</strong><span class="table-sub">${esc(b.customer_email)}<br>${esc(b.customer_phone)}</span></td>
+            <td data-label="Fechas">${date(b.start_date)} → ${date(b.end_date)}<span class="table-sub">${b.total_days} día(s)</span></td>
+            <td data-label="Limpieza">${b.cleaning_requested?'Sí':'No'}</td>
+            <td data-label="Estado"><span class="status status-${esc(b.booking_status)}">${labelStatus(b.booking_status)}</span></td>
+            <td data-label="Acciones" class="admin-booking-actions">
+              ${b.booking_status==='pending'?`<button class="btn btn-dark" data-confirm="${b.id}">Aceptar</button><button class="btn btn-light" data-reject="${b.id}">Rechazar</button>`:''}
+              ${b.booking_status==='confirmed'?`<button class="btn btn-light" data-modify="${b.id}">Modificar</button><button class="btn btn-light" data-cancel="${b.id}">Cancelar</button>`:''}
+            </td>
+          </tr>`).join('')
+        : `<tr><td colspan="6" class="muted">No hay reservas en este estado.</td></tr>`;
+
+      root.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>decideBooking(b.dataset.confirm,true));
+      root.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>decideBooking(b.dataset.reject,false));
+      root.querySelectorAll('[data-modify]').forEach(b=>b.onclick=()=>openAdminBookingEditor(b.dataset.modify));
+      root.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>cancelAdminBooking(b.dataset.cancel));
+    };
+
+    root.querySelector('#bookingFilter').onchange=paint;
+    paint();
+
+    async function decideBooking(id,confirm){
+      const q=await state.client.rpc(confirm?'confirm_booking':'reject_booking',{p_booking_id:id});
+      if(q.error){toast(root,q.error.message,true);return;}
+      await refresh();renderView('bookings');
+    }
   }
+
+  async function openAdminBookingEditor(bookingId){
+    const b=state.bookings.find(x=>String(x.id)===String(bookingId));
+    if(!b){alert('Reserva no encontrada.');return;}
+
+    const servicesRes=await state.client.rpc('get_public_space_services',{p_space_id:b.space_id});
+    if(servicesRes.error){alert(servicesRes.error.message);return;}
+    const services=servicesRes.data||[];
+
+    const m=modal('Modificar reserva',`<form id="adminBookingForm" class="admin-form-grid">
+      <label>Fecha de inicio<input id="adminModStart" type="date" value="${esc(b.start_date)}"></label>
+      <label>Fecha de fin<input id="adminModEnd" type="date" value="${esc(b.end_date)}"></label>
+      <label class="form-wide">Limpieza <span class="check-row"><input id="adminModCleaning" type="checkbox" ${b.cleaning_requested?'checked':''}> Solicitar limpieza</span></label>
+      ${services.length?`<label class="form-wide">Servicios${services.map(x=>x.included?'':`<span class="check-row"><input class="admin-mod-service" type="checkbox" value="${esc(x.id)}"> ${esc(x.name)} (${money(x.price)})</span>`).join('')}</label>`:''}
+    </form><p class="micro">La reserva seguirá confirmada. Las nuevas fechas se comprobarán antes de guardar.</p>
+    <button id="adminModSave" class="btn btn-dark full" type="button">Guardar modificación</button><p id="adminModMsg" class="message"></p>`);
+
+    m.querySelector('#adminModSave').onclick=async()=>{
+      const msg=m.querySelector('#adminModMsg');
+      const selectedServices=[...m.querySelectorAll('.admin-mod-service:checked')].map(x=>({id:x.value}));
+      const q=await state.client.rpc('owner_update_booking',{
+        p_booking_id:bookingId,
+        p_start_date:m.querySelector('#adminModStart').value,
+        p_end_date:m.querySelector('#adminModEnd').value,
+        p_cleaning_requested:m.querySelector('#adminModCleaning').checked,
+        p_selected_services:selectedServices,
+        p_customer_notes:null
+      });
+      if(q.error){msg.textContent=q.error.message;return;}
+      m.remove();await refresh();renderView('bookings');
+    };
+  }
+
+  async function cancelAdminBooking(bookingId){
+    const reason=prompt('Motivo de la cancelación (obligatorio):','');
+    if(!reason?.trim()) return;
+    const q=await state.client.rpc('owner_cancel_booking',{p_booking_id:bookingId,p_reason:reason.trim()});
+    if(q.error){alert(q.error.message);return;}
+    await refresh();renderView('bookings');
+  }
+
   const labelStatus=s=>({pending:'Pendiente',confirmed:'Confirmada',rejected:'Rechazada',expired:'Caducada',cancelled:'Cancelada'}[s]||s);
 
   async function renderCalendar(root){

@@ -15,7 +15,7 @@ const FALLBACK_SPACES = [{
   deposit:50, hours:'11:00–23:00 / 00:00',
   features:['80 sillas','14 mesas','Cocina equipada','Aseos adaptados','Climatización independiente','Monitor/a infantil 3 h','Pista de fútbol','Parque infantil','Cama elástica'],
   gallery:['assets/44728f3e-b83b-415f-918a-0e77a90f1819.jpg','assets/78462fe7-2189-4361-8f27-d57f847d9b02.jpg','assets/9801f99c-b3cc-4bf1-a330-c8ba9e7b0564.jpg','assets/1cc39359-35d7-44a7-937c-df9c444bcf6c.jpg','assets/74dd0b0f-06b9-4ed7-8be5-b277926c49a9.jpg'],
-  cleaningAvailable:false, cleaningPrice:0, cancellationPolicy:'', active:true, activeFrom:'2026-09-25', activeUntil:'2027-12-31'
+  cleaningAvailable:true, cleaningPrice:50, cancellationPolicy:'', active:true, activeFrom:'2026-09-25', activeUntil:'2027-12-31'
 }];
 
 const euro=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(n||0));
@@ -37,7 +37,7 @@ async function getPublicSpaces(){
   try{
     // Consulta principal separada de las relaciones para que un fallo de imágenes/features
     // no convierta el espacio en un falso ID de prueba.
-    const {data,error}=await client.from('spaces').select('id,name,city,province,latitude,longitude,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,conditions_text,holiday_price,eve_holiday_price,active,admin_enabled,owner_active,active_from,active_until').eq('active',true).eq('admin_enabled',true).eq('owner_active',true).order('name');
+    const {data,error}=await client.from('spaces').select('id,name,city,province,latitude,longitude,description,weekday_price,friday_price,saturday_price,sunday_price,deposit,opening_time,closing_time,cleaning_available,cleaning_price,cancellation_policy,conditions_text,holiday_price,active,admin_enabled,owner_active,active_from,active_until').eq('active',true).eq('admin_enabled',true).eq('owner_active',true).order('name');
     if(error)throw error;
     const active=(data||[]).filter(s=>isActive({active:s.active,activeFrom:s.active_from,activeUntil:s.active_until}));
     const normalized=[];
@@ -47,7 +47,7 @@ async function getPublicSpaces(){
       if(!featureRes.error)features=(featureRes.data||[]).map(x=>x.feature).filter(Boolean);
       const imageRes=await client.from('space_images').select('image_url,sort_order').eq('space_id',s.id).order('sort_order');
       if(!imageRes.error)images=(imageRes.data||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(x=>x.image_url).filter(Boolean);
-      let services=[]; const serviceRes=await client.rpc('get_public_space_services',{p_space_id:s.id}); if(!serviceRes.error)services=serviceRes.data||[]; let dayPrices={}; const dayRes=await client.rpc('get_public_space_day_prices',{p_space_id:s.id}); if(!dayRes.error)(dayRes.data||[]).forEach(x=>dayPrices[x.day_of_week]=Number(x.price||0)); let holidays={}; const y=new Date().getFullYear(); for(const hy of [y,y+1]){const hr=await client.rpc('get_public_space_holidays',{p_space_id:s.id,p_year:hy}); if(!hr.error)(hr.data||[]).forEach(x=>holidays[x.holiday_date]={name:x.name});} let holidayEves={}; Object.keys(holidays).forEach(hd=>{const eve=addDaysISO(hd,-1); if(!holidays[eve]) holidayEves[eve]={name:`Víspera de ${holidays[hd].name||'festivo'}`,holidayDate:hd};}); let normalizedSpace=normalizeSpace({...s,space_features:features.map(feature=>({feature})),space_images:images.map((image_url,i)=>({image_url,sort_order:i})),space_services:services,day_prices:dayPrices,holiday_price:s.holiday_price,eve_holiday_price:s.eve_holiday_price,holidays,holiday_eves:holidayEves});
+      let services=[]; const serviceRes=await client.rpc('get_public_space_services',{p_space_id:s.id}); if(!serviceRes.error)services=serviceRes.data||[]; let dayPrices={}; const dayRes=await client.rpc('get_public_space_day_prices',{p_space_id:s.id}); if(!dayRes.error)(dayRes.data||[]).forEach(x=>dayPrices[x.day_of_week]=Number(x.price||0)); let holidays={}; const y=new Date().getFullYear(); for(const hy of [y,y+1]){const hr=await client.rpc('get_public_space_holidays',{p_space_id:s.id,p_year:hy}); if(!hr.error)(hr.data||[]).forEach(x=>holidays[x.holiday_date]={name:x.name});} let normalizedSpace=normalizeSpace({...s,space_features:features.map(feature=>({feature})),space_images:images.map((image_url,i)=>({image_url,sort_order:i})),space_services:services,day_prices:dayPrices,holiday_price:s.holiday_price,holidays});
       // Salvaguarda para La Nube: mientras se termina la configuración de servicios,
       // su ficha debe reflejar la configuración confirmada en Supabase.
       if(String(normalizedSpace.id)===LA_NUBE_ID && normalizedSpace.deposit==null){
@@ -66,7 +66,7 @@ async function getPublicSpaces(){
 }
 function normalizeSpace(s){
   const images=(s.space_images||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(x=>x.image_url).filter(Boolean);
-  return {id:s.id,name:s.name,city:s.city,province:s.province,address:s.address||'',latitude:s.latitude,longitude:s.longitude,image:images[0]||FALLBACK_SPACES[0].image,gallery:images.slice(1),description:s.description||'',priceWeekday:s.weekday_price,priceTuesday:s.tuesday_price,priceWednesday:s.wednesday_price,priceThursday:s.thursday_price,priceFriday:s.friday_price,priceSaturday:s.saturday_price,priceSunday:s.sunday_price,dayPrices:s.day_prices||{},holidayPrice:Number(s.holiday_price||0),eveHolidayPrice:Number(s.eve_holiday_price||0),holidays:s.holidays||{},holidayEves:s.holiday_eves||{},deposit:s.deposit,hours:formatHours(s.opening_time,s.closing_time),features:[...(s.space_features||[]).map(x=>x.feature)].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'es',{sensitivity:'base'})),services:[...(s.space_services||[])].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{sensitivity:'base'})),cleaningAvailable:!!s.cleaning_available,cleaningPrice:s.cleaning_price||0,cancellationPolicy:s.cancellation_policy||'',conditions:s.conditions_text||s.cancellation_policy||'',active:s.active,adminEnabled:s.admin_enabled!==false,ownerActive:s.owner_active!==false,activeFrom:s.active_from,activeUntil:s.active_until};
+  return {id:s.id,name:s.name,city:s.city,province:s.province,address:s.address||'',latitude:s.latitude,longitude:s.longitude,image:images[0]||FALLBACK_SPACES[0].image,gallery:images.slice(1),description:s.description||'',priceWeekday:s.weekday_price,priceTuesday:s.tuesday_price,priceWednesday:s.wednesday_price,priceThursday:s.thursday_price,priceFriday:s.friday_price,priceSaturday:s.saturday_price,priceSunday:s.sunday_price,dayPrices:s.day_prices||{},holidayPrice:Number(s.holiday_price||0),holidays:s.holidays||{},deposit:s.deposit,hours:formatHours(s.opening_time,s.closing_time),features:[...(s.space_features||[]).map(x=>x.feature)].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'es',{sensitivity:'base'})),services:[...(s.space_services||[])].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{sensitivity:'base'})),cleaningAvailable:!!s.cleaning_available,cleaningPrice:s.cleaning_price||0,cancellationPolicy:s.cancellation_policy||'',conditions:s.conditions_text||s.cancellation_policy||'',active:s.active,adminEnabled:s.admin_enabled!==false,ownerActive:s.owner_active!==false,activeFrom:s.active_from,activeUntil:s.active_until};
 }
 function formatHours(open,close){return open&&close?`${String(open).slice(0,5)}–${String(close).slice(0,5)}`:'Consultar horario';}
 function footer(){return `<footer><div class="container footer-inner"><div class="footer-brand-block"><div class="footer-brand"><img class="footer-logo" src="assets/logo-miespacio-principal.png" alt="MiEspacio Para Celebrar"><strong>MiEspacioParaCelebrar</strong></div><p>Admin: <a href="mailto:${ADMIN_EMAIL}">${ADMIN_EMAIL}</a></p></div></div></footer>`;}
@@ -87,7 +87,7 @@ async function initMap(id,spaces,single=false){
   if(single)map.setView(bounds[0],17);else map.fitBounds(bounds,{padding:[35,35],maxZoom:16});setTimeout(()=>map.invalidateSize(),150);
 }
 
-function priceForDate(s,date){if(!date)return null;if(s.holidays&&Object.prototype.hasOwnProperty.call(s.holidays,date))return Number(s.holidayPrice||0);if(s.holidayEves&&Object.prototype.hasOwnProperty.call(s.holidayEves,date))return Number(s.eveHolidayPrice||0);const d=new Date(`${date}T12:00:00`),isoDay=d.getDay()===0?7:d.getDay();if(s.dayPrices&&Object.prototype.hasOwnProperty.call(s.dayPrices,isoDay))return Number(s.dayPrices[isoDay]||0);if(isoDay===1)return s.priceWeekday;if(isoDay===2)return s.priceTuesday??s.priceWeekday;if(isoDay===3)return s.priceWednesday??s.priceWeekday;if(isoDay===4)return s.priceThursday??s.priceWeekday;if(isoDay===5)return s.priceFriday;if(isoDay===6)return s.priceSaturday;return s.priceSunday;}
+function priceForDate(s,date){if(!date)return null;if(s.holidays&&Object.prototype.hasOwnProperty.call(s.holidays,date))return Number(s.holidayPrice||0);const d=new Date(`${date}T12:00:00`),isoDay=d.getDay()===0?7:d.getDay();if(s.dayPrices&&Object.prototype.hasOwnProperty.call(s.dayPrices,isoDay))return Number(s.dayPrices[isoDay]||0);if(isoDay===1)return s.priceWeekday;if(isoDay===2)return s.priceTuesday??s.priceWeekday;if(isoDay===3)return s.priceWednesday??s.priceWeekday;if(isoDay===4)return s.priceThursday??s.priceWeekday;if(isoDay===5)return s.priceFriday;if(isoDay===6)return s.priceSaturday;return s.priceSunday;}
 function formatDateLong(date){if(!date)return '';return new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(`${date}T12:00:00`));}
 function calculateBookingPrice(s,start,end){if(!start||!end||end<start)return null;let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),total=0,days=0;while(d<=last){total+=Number(priceForDate(s,d.toISOString().slice(0,10))||0);days++;d.setDate(d.getDate()+1);}return {days,total};}
 function localISODate(date=new Date()){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
@@ -124,12 +124,12 @@ async function renderSpaceDetail(){
   if(!s){root.innerHTML='<section class="section"><div class="container"><h1>Espacio no disponible</h1><p class="muted">Este espacio ya no está disponible públicamente.</p><a class="btn btn-dark" href="espacios.html">Ver espacios</a></div></section>';return;}
   document.title=`${s.name} · MiEspacioParaCelebrar`;
   root.innerHTML=`<section class="space-detail-hero"><div class="space-detail-image"><img src="${esc(s.image)}" alt="${esc(s.name)}"></div><div class="container space-detail-heading"><p class="eyebrow">${esc(s.city)} · ${esc(s.province)}</p><h1>${esc(s.name)}</h1><p>${esc(s.description)}</p></div></section>
-  <section class="section"><div class="container detail-main"><div><p class="eyebrow">EL ESPACIO</p><h2>Todo lo que necesitas para celebrar</h2><div class="feature-list feature-list-large">${s.features.map(f=>`<span>${esc(f)}</span>`).join('')}</div></div><div class="detail-summary"><div><span>Precio</span><strong>${esc(priceRange(s))}</strong></div>${s.deposit!=null?`<div class="rule-card-deposit"><div class="rule-card-main"><span>Fianza</span><strong>${euro(s.deposit)}</strong></div><small>Se entrega con el resto del pago y se devuelve tras comprobar el estado del espacio.</small></div>`:''}<div><span>Horario</span><strong>${esc(s.hours)}</strong></div><a class="btn btn-dark full" href="#disponibilidad">Solicitar reserva</a></div></div></section>
+  <section class="section"><div class="container detail-main"><div><p class="eyebrow">EL ESPACIO</p><h2>Todo lo que necesitas para celebrar</h2><div class="feature-list feature-list-large">${s.features.map(f=>`<span>${esc(f)}</span>`).join('')}</div></div><div class="detail-summary"><div><span>Precio</span><strong>${esc(priceRange(s))}</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}<div><span>Horario</span><strong>${esc(s.hours)}</strong></div><a class="btn btn-dark full" href="#disponibilidad">Solicitar reserva</a></div></div></section>
   <section class="gallery-section"><div class="container gallery">${[s.image,...s.gallery].slice(0,6).map((img,i)=>`<img class="g${i+1}" src="${esc(img)}" alt="${esc(s.name)}">`).join('')}</div></section>
   ${s.services?.filter(x=>!x.included&&x.selection_group==='paquete').length?`<section class="section"><div class="container"><p class="eyebrow">PAQUETES Y OPCIONES</p><h2>Elige la opción que necesitas</h2><div class="package-grid">${s.services.filter(x=>!x.included&&x.selection_group==='paquete').map(x=>`<article class="package-card"><h3>${esc(x.name)}</h3><strong>${euro(x.price)}${x.price_mode==='per_day'?' / día':''}</strong>${x.allowed_days?.length?`<p class="micro">Disponible según los días configurados.</p>`:''}${x.description?`<p>${esc(x.description)}</p>`:''}</article>`).join('')}</div></div></section>`:''}
-  <section class="section soft"><div class="container details-grid"><div><p class="eyebrow">PRECIOS Y CONDICIONES</p><h2>Lo que debes saber antes de solicitar</h2></div><div class="rule-card"><div><span>Precio</span><strong>${esc(priceRange(s))}${priceRange(s)==='Según paquete'?'':' según el día'}</strong></div>${s.deposit!=null?`<div class="rule-card-deposit"><div class="rule-card-main"><span>Fianza</span><strong>${euro(s.deposit)}</strong></div><small>Se entrega con el resto del pago y se devuelve tras comprobar el estado del espacio.</small></div>`:''}${s.cleaningAvailable?`<div><span>Limpieza</span><strong>${euro(s.cleaningPrice)} · opcional</strong></div>`:''}<div><span>Reserva</span><strong>Solicitud previa, no confirmación automática</strong></div><div><span>Pre-reserva</span><strong>72 horas, hasta que el propietario valide o rechace la solicitud.</strong></div></div></div></section>
+  <section class="section soft"><div class="container details-grid"><div><p class="eyebrow">PRECIOS Y CONDICIONES</p><h2>Lo que debes saber antes de solicitar</h2></div><div class="rule-card"><div><span>Precio</span><strong>${esc(priceRange(s))}${priceRange(s)==='Según paquete'?'':' según el día'}</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}${s.cleaningAvailable?`<div><span>Limpieza</span><strong>${euro(s.cleaningPrice)} · opcional</strong></div>`:''}<div><span>Reserva</span><strong>Solicitud previa, no confirmación automática</strong></div><div><span>Retención</span><strong>Las fechas se mantienen 72 horas</strong></div></div></div></section>
   <section class="section map-section"><div class="container"><div class="section-head"><div><p class="eyebrow">UBICACIÓN</p><h2>Cómo llegar</h2></div><p class="muted">Ubicación del espacio.</p></div><div id="spaceMap" class="map"></div></div></section>
-  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta disponibilidad y envía tu solicitud</h2><p class="muted">La solicitud no confirma automáticamente la reserva. El propietario dispone de 72 horas para procesarla y contactará contigo para cerrar las condiciones.</p><div class="rule-card"><div><span>Solicitud</span><strong>Fecha pre-reservada 72 horas, hasta que el propietario la valide o rechace.</strong></div><div><span>Confirmación</span><strong>La realiza el propietario</strong></div></div></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><div class="date-picker-wrap"><input id="startDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="startDate" aria-label="Abrir calendario">▾</button></div><label for="endDate">Fecha de fin</label><div class="date-picker-wrap"><input id="endDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="endDate" aria-label="Abrir calendario">▾</button></div><div id="bookingCalendar" class="booking-calendar" hidden></div>${s.services?.length?`<fieldset class="booking-services"><legend>Opciones y servicios</legend>${renderPublicServiceOptions(s)}</fieldset>`:''}<label class="check booking-cleaning" ${s.cleaningAvailable?'':'hidden'}><input id="cleaning" type="checkbox"> <span>Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</span></label><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><label for="customerNotes">Observaciones <span class="micro">(opcional)</span></label><textarea id="customerNotes" rows="4" placeholder="Indica cualquier detalle que quieras trasladar al propietario."></textarea><details class="conditions-box"><summary>＋ Condiciones generales del espacio</summary><div>${esc(s.conditions||'Consulta con el propietario las condiciones específicas del espacio.')}</div></details><label class="check required-check"><input id="acceptConditions" type="checkbox"> <span>He leído las condiciones generales del espacio.</span></label><label class="check required-check"><input id="acceptPrivacy" type="checkbox"> <span>He leído y acepto la Política de Privacidad.</span></label><button class="btn btn-dark full" id="reserveBtn" type="button">Revisar solicitud</button><p class="micro">Tus datos se utilizan para gestionar esta solicitud y se facilitan al propietario del espacio. No se almacenan datos bancarios.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
+  <section id="disponibilidad" class="section booking-section"><div class="container booking-grid"><div><p class="eyebrow">SOLICITAR RESERVA · ${esc(s.name.toUpperCase())}</p><h2>Consulta disponibilidad y envía tu solicitud</h2><p class="muted">La solicitud no confirma automáticamente la reserva. El propietario dispone de 72 horas para procesarla y contactará contigo para cerrar las condiciones.</p><div class="rule-card"><div><span>Solicitud</span><strong>Retención durante 72 horas</strong></div><div><span>Confirmación</span><strong>La realiza el propietario</strong></div></div></div><div class="booking-card"><label for="startDate">Fecha de inicio</label><div class="date-picker-wrap"><input id="startDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="startDate" aria-label="Abrir calendario">▾</button></div><label for="endDate">Fecha de fin</label><div class="date-picker-wrap"><input id="endDate" class="booking-date-input" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="dd/mm/aaaa" aria-haspopup="dialog" aria-expanded="false"><button type="button" class="date-picker-toggle" data-date-target="endDate" aria-label="Abrir calendario">▾</button></div><div id="bookingCalendar" class="booking-calendar" hidden></div>${s.services?.length?`<fieldset class="booking-services"><legend>Opciones y servicios</legend>${renderPublicServiceOptions(s)}</fieldset>`:''}<label class="check booking-cleaning" ${s.cleaningAvailable?'':'hidden'}><input id="cleaning" type="checkbox"> <span>Solicitar limpieza${s.cleaningAvailable?` (${euro(s.cleaningPrice)})`:''}</span></label><div id="priceBox" class="price-box" hidden></div><label for="customerName">Nombre</label><input id="customerName" type="text" autocomplete="name"><label for="customerEmail">Email</label><input id="customerEmail" type="email" autocomplete="email"><label for="customerPhone">Teléfono</label><input id="customerPhone" type="tel" autocomplete="tel"><label for="customerNotes">Observaciones <span class="micro">(opcional)</span></label><textarea id="customerNotes" rows="4" placeholder="Indica cualquier detalle que quieras trasladar al propietario."></textarea><details class="conditions-box"><summary>＋ Condiciones generales del espacio</summary><div>${esc(s.conditions||'Consulta con el propietario las condiciones específicas del espacio.')}</div></details><label class="check required-check"><input id="acceptConditions" type="checkbox"> <span>He leído las condiciones generales del espacio.</span></label><label class="check required-check"><input id="acceptPrivacy" type="checkbox"> <span>He leído y acepto la Política de Privacidad.</span></label><button class="btn btn-dark full" id="reserveBtn" type="button">Revisar solicitud</button><p class="micro">Tus datos se utilizan para gestionar esta solicitud y se facilitan al propietario del espacio. No se almacenan datos bancarios.</p><p id="message" class="message" aria-live="polite"></p></div></div></section>`;
   initMap('spaceMap',[s],true);initBooking(s);
 }
 function parseUserDate(value){
@@ -188,67 +188,13 @@ function updatePriceBox(s){
   const replaces=selected.some(e=>e.dataset.replacesRental==='true');
   const rentalTotal=replaces?0:calc.total;
   const deposit=Number(s.deposit||0);let d=new Date(`${start}T12:00:00`),last=new Date(`${end}T12:00:00`),rows='';
-  while(d<=last){const iso=localISODate(d),p=priceForDate(s,iso);rows+=`<div><span>${esc(formatDateLong(iso))}${s.holidays?.[iso]?` <small>· ${esc(s.holidays[iso].name||'Festivo')}</small>`:s.holidayEves?.[iso]?` <small>· ${esc(s.holidayEves[iso].name||'Víspera de festivo')}</small>`:''}</span><strong>${euro(p)}</strong></div>`;d.setDate(d.getDate()+1);}
+  while(d<=last){const iso=localISODate(d),p=priceForDate(s,iso);rows+=`<div><span>${esc(formatDateLong(iso))}${s.holidays?.[iso]?` <small>· ${esc(s.holidays[iso].name||'Festivo local')}</small>`:''}</span><strong>${euro(p)}</strong></div>`;d.setDate(d.getDate()+1);}
   const finalTotal=rentalTotal+Number(cleaning||0)+serviceTotal+deposit;
   const selectedDetails=selected.map(e=>{const o=s.services.find(x=>String(x.id)===String(e.value));if(!o)return null;const p=Number(o.price||0)*(o.price_mode==='per_day'?calc.days:1);return {name:o.name,total:p,unit:o.price,mode:o.price_mode||'fixed'};}).filter(Boolean);
-  box.innerHTML=rows+`${replaces?'<div><span>Precio base diario</span><strong>Sustituido por paquete</strong></div>':`<div><span>Total alquiler</span><strong>${euro(rentalTotal)}</strong></div>`}${selectedDetails.length?`<div><span>Opciones / servicios</span><strong>${euro(serviceTotal)}</strong></div>${selectedDetails.map(x=>`<div><span>${esc(x.name)}</span><strong>${euro(x.total)}${x.mode==='per_day'?' · '+euro(x.unit)+' / día':''}</strong></div>`).join('')}`:''}${s.cleaningAvailable&&cleaning?`<div><span>Limpieza</span><strong>${euro(cleaning)}</strong></div>`:''}${s.deposit!=null?`<div class="price-box-deposit"><div><span>Fianza</span><strong>${euro(deposit)}</strong></div><small>Se entrega con el resto del pago y se devuelve tras comprobar el estado del espacio.</small></div>`:''}<div class="total"><span>Total <small>(Fianza incluida)</small></span><strong>${euro(finalTotal)}</strong></div>`;box.hidden=false;
-}
-
-function ensureHolidayCalendarStyles(){
-  if(document.getElementById('mep-holiday-calendar-styles'))return;
-  const style=document.createElement('style');
-  style.id='mep-holiday-calendar-styles';
-  style.textContent=`
-    /* Prioridad visual: Ocupada > Retenida > Festivo/Víspera > Normal/Cumplido */
-    .calendar-day.unavailable-confirmed{
-      background:#fee2e2 !important;
-      border-color:#ef4444 !important;
-      color:#b91c1c !important;
-    }
-    .calendar-day.unavailable-pending{
-      background:#fef3c7 !important;
-      border-color:#f59e0b !important;
-      color:#92400e !important;
-    }
-    .calendar-day.holiday:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled),
-    .calendar-day.holiday-eve:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled){
-      background:#dbeafe !important;
-      border-color:#60a5fa !important;
-      color:#1d4ed8 !important;
-    }
-    .calendar-day.holiday:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled):hover,
-    .calendar-day.holiday-eve:not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled):hover{
-      background:#bfdbfe !important;
-    }
-    .calendar-day.fulfilled{
-      background:#ffffff !important;
-      border-color:#d1d5db !important;
-      color:#6b7280 !important;
-    }
-    .calendar-day:not(.holiday):not(.holiday-eve):not(.unavailable-confirmed):not(.unavailable-pending):not(.fulfilled){
-      background:#ffffff !important;
-    }
-    .calendar-legend .legend-dot.confirmed{
-      background:#ef4444 !important;
-    }
-    .calendar-legend .legend-dot.pending{
-      background:#f59e0b !important;
-    }
-    .calendar-legend .legend-dot.holiday,
-    .calendar-legend .legend-dot.holiday-eve{
-      background:#3b82f6 !important;
-    }
-    .calendar-legend .legend-dot.normal,
-    .calendar-legend .legend-dot.fulfilled{
-      background:#ffffff !important;
-      border:1px solid #d1d5db !important;
-    }
-  `;
-  document.head.appendChild(style);
+  box.innerHTML=rows+`${replaces?'<div><span>Precio base diario</span><strong>Sustituido por paquete</strong></div>':`<div><span>Total alquiler</span><strong>${euro(rentalTotal)}</strong></div>`}${selectedDetails.length?`<div><span>Opciones / servicios</span><strong>${euro(serviceTotal)}</strong></div>${selectedDetails.map(x=>`<div><span>${esc(x.name)}</span><strong>${euro(x.total)}${x.mode==='per_day'?' · '+euro(x.unit)+' / día':''}</strong></div>`).join('')}`:''}${s.cleaningAvailable&&cleaning?`<div><span>Limpieza</span><strong>${euro(cleaning)}</strong></div>`:''}${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(deposit)}</strong></div>`:''}<div class="total"><span>Total <small>(Fianza incluida)</small></span><strong>${euro(finalTotal)}</strong></div>`;box.hidden=false;
 }
 
 function renderBookingCalendar(state){
-  ensureHolidayCalendarStyles();
   const cal=document.querySelector('#bookingCalendar');if(!cal)return;
   const {year,month,activeTarget,start,end,unavailable}=state;
   const first=new Date(year,month-1,1),daysInMonth=new Date(year,month,0).getDate(),startWeek=(first.getDay()+6)%7;
@@ -260,22 +206,20 @@ function renderBookingCalendar(state){
     cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(py,pm,d)}" disabled>${d}</button>`;
   }
   for(let d=1;d<=daysInMonth;d++){
-    const iso=isoFromParts(year,month,d),reason=unavailable.get(iso)||'',today=localISODate(),fulfilled=iso<today,disabled=!!reason||(state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate);
+    const iso=isoFromParts(year,month,d),reason=unavailable.get(iso)||'',disabled=!!reason||(state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate);
     const classes=['calendar-day'];
-    if(fulfilled)classes.push('fulfilled');
-    if(!fulfilled&&reason==='confirmed')classes.push('unavailable-confirmed');
-    if(!fulfilled&&reason==='pending')classes.push('unavailable-pending');
-    if(!fulfilled&&dateInRange(iso,start,end))classes.push('selected');
-    if(!fulfilled&&start&&iso===start)classes.push('selected-start');
-    if(!fulfilled&&end&&iso===end)classes.push('selected-end');
-    if(iso===today)classes.push('today');
-    const holiday=state.space.holidays?.[iso],eve=state.space.holidayEves?.[iso]; if(!fulfilled&&holiday)classes.push('holiday'); else if(!fulfilled&&eve)classes.push('holiday-eve');
-    const title=holiday?holiday.name||'Festivo':eve?eve.name||'Víspera de festivo':fulfilled?'Fecha cumplida':'';
-    cells+=`<button type="button" class="${classes.join(' ')}" data-date="${iso}" title="${esc(title)}" ${disabled?'disabled':''}>${d}</button>`;
+    if(reason==='confirmed')classes.push('unavailable-confirmed');
+    if(reason==='pending')classes.push('unavailable-pending');
+    if(dateInRange(iso,start,end))classes.push('selected');
+    if(start&&iso===start)classes.push('selected-start');
+    if(end&&iso===end)classes.push('selected-end');
+    if(iso===localISODate())classes.push('today');
+    const holiday=state.space.holidays?.[iso]; if(holiday)classes.push('holiday');
+    cells+=`<button type="button" class="${classes.join(' ')}" data-date="${iso}" title="${holiday?esc(holiday.name||'Festivo local'):''}" ${disabled?'disabled':''}>${d}</button>`;
   }
   const trailing=(7-((startWeek+daysInMonth)%7))%7;
   for(let i=1;i<=trailing;i++){const nm=month===12?1:month+1,ny=month===12?year+1:year;cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(ny,nm,i)}" disabled>${i}</button>`;}
-  cal.innerHTML=`<div class="calendar-head"><button type="button" class="calendar-nav" data-cal-prev aria-label="Mes anterior">‹</button><strong>${esc(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><button type="button" class="calendar-nav" data-cal-next aria-label="Mes siguiente">›</button></div><div class="calendar-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-grid">${cells}</div><div class="calendar-legend"><span><i class="legend-dot confirmed"></i>Ocupada</span><span><i class="legend-dot pending"></i>Retenida</span><span><i class="legend-dot holiday"></i>Festivo / Víspera</span><span><i class="legend-dot normal"></i>Días normales</span><span><i class="legend-dot fulfilled"></i>Días cumplidos</span></div>`;
+  cal.innerHTML=`<div class="calendar-head"><button type="button" class="calendar-nav" data-cal-prev aria-label="Mes anterior">‹</button><strong>${esc(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}</strong><button type="button" class="calendar-nav" data-cal-next aria-label="Mes siguiente">›</button></div><div class="calendar-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="calendar-grid">${cells}</div><div class="calendar-legend"><span><i class="legend-dot confirmed"></i>Ocupada</span><span><i class="legend-dot pending"></i>Retenida</span></div>`;
 
   // Los botones de navegación reciben su propio manejador cada vez que se
   // pinta el calendario. Esto evita depender de la propagación del evento
@@ -296,20 +240,9 @@ function renderBookingCalendar(state){
   prev?.addEventListener('click',e=>goMonth(-1,e));
   next?.addEventListener('click',e=>goMonth(1,e));
 }
-function placeBookingCalendar(cal,target){
-  if(!cal)return;
-  const input=document.querySelector(`#${target}`);
-  const wrap=input?.closest('.date-picker-wrap');
-  if(!wrap)return;
-  // En móvil el calendario siempre queda inmediatamente después del campo que lo abrió.
-  // En escritorio conserva el mismo bloque de flujo y evita superposiciones.
-  wrap.insertAdjacentElement('afterend',cal);
-}
 function openBookingCalendar(target,state){
-  const cal=document.querySelector('#bookingCalendar');
-  if(state.open && state.activeTarget===target && cal && !cal.hidden){closeBookingCalendar(state);return;}
-  state.activeTarget=target;const iso=parseUserDate(document.querySelector(`#${target}`)?.value)||state.start||state.minDate||localISODate();const p=dateToParts(iso);state.year=p.y;state.month=p.m;state.open=true;if(cal){placeBookingCalendar(cal,target);cal.hidden=false;document.querySelector(`#${target}`)?.setAttribute('aria-expanded','true');renderBookingCalendar(state);}}
-function closeBookingCalendar(state){const cal=document.querySelector('#bookingCalendar');if(cal)cal.hidden=true;document.querySelectorAll('.booking-date-input').forEach(el=>el.setAttribute('aria-expanded','false'));if(state)state.open=false;}
+  state.activeTarget=target;const iso=parseUserDate(document.querySelector(`#${target}`)?.value)||state.start||state.minDate||localISODate();const p=dateToParts(iso);state.year=p.y;state.month=p.m;state.open=true;const cal=document.querySelector('#bookingCalendar');if(cal){cal.hidden=false;document.querySelector(`#${target}`)?.setAttribute('aria-expanded','true');renderBookingCalendar(state);}}
+function closeBookingCalendar(){const cal=document.querySelector('#bookingCalendar');if(cal)cal.hidden=true;document.querySelectorAll('.booking-date-input').forEach(el=>el.setAttribute('aria-expanded','false'));}
 function setBookingInput(id,iso){const el=document.querySelector(`#${id}`);if(el){el.value=displayDate(iso);el.dataset.iso=iso;el.classList.remove('date-unavailable','date-invalid');}}
 function validateManualDate(id,state){const el=document.querySelector(`#${id}`);if(!el)return '';const iso=parseUserDate(el.value);el.classList.remove('date-unavailable','date-invalid');if(!iso){if(el.value.trim())el.classList.add('date-invalid');return '';}
   if((state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate)){el.classList.add('date-unavailable');return iso;}
@@ -327,7 +260,7 @@ function selectCalendarDate(iso,state){
     else if(rangeHasUnavailable(state.start,iso,state.unavailable)){state.end=iso;setBookingInput('endDate',iso);}
     else{state.end=iso;state.endWasAuto=false;setBookingInput('endDate',iso);}
   }
-  updatePriceBox(state.space);renderBookingCalendar(state);closeBookingCalendar(state);
+  updatePriceBox(state.space);renderBookingCalendar(state);closeBookingCalendar();
 }
 
 async function initBooking(s){
@@ -401,57 +334,51 @@ async function initBooking(s){
   });
 }
 
-function initOwnerContact(){
- const btn=document.querySelector('#ownerContactBtn');
- if(!btn||btn.dataset.bound==='1')return;
- btn.dataset.bound='1';
- btn.addEventListener('click',()=>{
-   const modal=document.createElement('div');modal.className='modal-backdrop owner-contact-backdrop';
-   modal.innerHTML=`<div class="modal-card owner-contact-modal" role="dialog" aria-modal="true" aria-labelledby="ownerContactTitle">
-     <div class="section-head"><div><p class="eyebrow">PARA PROPIETARIOS</p><h2 id="ownerContactTitle">Incluye tu espacio</h2></div><button type="button" class="modal-close btn btn-light" aria-label="Cerrar">Cerrar</button></div>
-     <p class="muted">Cuéntanos brevemente qué espacio quieres incorporar a MiEspacioParaCelebrar y nos pondremos en contacto contigo.</p>
-     <form id="ownerContactForm" class="owner-contact-form">
-       <label>Nombre y apellidos<input id="contactName" autocomplete="name" required maxlength=120></label>
-       <label>Email<input id="contactEmail" type="email" autocomplete="email" required maxlength=160></label>
-       <label>Teléfono<input id="contactPhone" type="tel" autocomplete="tel" maxlength=30></label>
-       <label>Nombre del espacio<input id="contactSpace" required maxlength=160></label>
-       <label>Localidad<input id="contactCity" maxlength=120></label>
-       <label>Mensaje <span class="micro">(opcional)</span><textarea id="contactMessage" rows=4 maxlength=2000 placeholder="Cuéntanos cualquier detalle que consideres importante."></textarea></label>
-       <input id="contactWebsite" class="owner-contact-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
-       <button class="btn btn-dark full" id="ownerContactSend" type="submit">Enviar solicitud</button>
-       <p id="ownerContactMsg" class="message" aria-live="polite"></p>
-     </form>
-   </div>`;
-   document.body.appendChild(modal);
-   const close=()=>modal.remove();
-   modal.querySelector('.modal-close').onclick=close;
-   modal.addEventListener('click',e=>{if(e.target===modal)close();});
-   modal.querySelector('#contactName').focus();
-   modal.querySelector('#ownerContactForm').addEventListener('submit',async e=>{
-     e.preventDefault();
-     const msg=modal.querySelector('#ownerContactMsg'),send=modal.querySelector('#ownerContactSend');
-     const v=id=>modal.querySelector(id).value.trim();
-     if(v('#contactWebsite'))return;
-     const email=v('#contactEmail'),phone=v('#contactPhone');
-     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg.textContent='Introduce un email válido.';return;}
-     if(phone&&!/^[0-9+() .-]{6,30}$/.test(phone)){msg.textContent='Introduce un teléfono válido.';return;}
-     send.disabled=true;msg.textContent='Enviando solicitud…';
-     const client=await getClient();
-     if(!client){msg.textContent='No se ha podido conectar con el sistema. Inténtalo de nuevo.';send.disabled=false;return;}
-     const {error}=await client.rpc('submit_space_inclusion_request',{p_name:v('#contactName'),p_email:email,p_phone:phone||null,p_space_name:v('#contactSpace'),p_city:v('#contactCity')||null,p_message:v('#contactMessage')||null,p_website:v('#contactWebsite')||null});
-     if(error){console.error('Error enviando solicitud de incorporación:',error);msg.textContent=error.message||'No se ha podido enviar la solicitud.';send.disabled=false;return;}
-     msg.textContent='Solicitud enviada correctamente. El administrador se pondrá en contacto contigo.';
-     modal.querySelectorAll('input,textarea,button').forEach(el=>{if(el!==modal.querySelector('.modal-close'))el.disabled=true;});
-     setTimeout(close,1800);
-   });
- });
-}
-async function renderHome(){initOwnerContact();}
+async function renderHome(){return;}
 async function renderSpacesMap(){const map=document.querySelector('#spacesMap');if(!map)return;const spaces=window.__publicSpaces||await getPublicSpaces();initMap('spacesMap',spaces,false);}
 
 async function initPrivateLogin(){const form=document.querySelector('#loginForm');if(!form)return;const msg=document.querySelector('#loginMessage');if(!SUPABASE_ANON_KEY){msg.textContent='Falta la clave pública de Supabase en la configuración.';return;}if(!window.supabase){msg.textContent='No se ha podido cargar la conexión con Supabase. Recarga la página.';return;}const client=await getClient();if(!client){msg.textContent='No se ha podido inicializar la conexión con Supabase.';return;}try{const {data:{session},error:sessionError}=await client.auth.getSession();if(sessionError)throw sessionError;if(session){location.href='area-privada.html';return;}}catch(error){console.error('Error comprobando la sesión:',error);msg.textContent='No se ha podido comprobar la conexión con Supabase.';return;}form.addEventListener('submit',async e=>{e.preventDefault();msg.textContent='Accediendo…';const email=document.querySelector('#loginEmail').value.trim(),password=document.querySelector('#loginPassword').value;const {error}=await client.auth.signInWithPassword({email,password});if(error){console.error('Error de acceso:',error);msg.textContent='No se ha podido iniciar sesión. Comprueba el correo y la contraseña.';return;}location.href='area-privada.html';});}
 
+function ensurePrivateResponsiveStyles(){
+ const id='mep-private-responsive-fix';
+ if(document.getElementById(id))return;
+ const st=document.createElement('style');st.id=id;
+ st.textContent=`
+  #privateArea{width:100%;max-width:100%;overflow-x:hidden}
+  .owner-bookings,.owner-grid,.booking-list,.booking-item{width:100%;min-width:0;box-sizing:border-box}
+  .booking-meta span{min-width:0;overflow-wrap:anywhere}
+  .booking-actions{display:flex;flex-wrap:wrap;gap:10px}
+  .booking-actions .btn{min-width:130px}
+  .owner-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .owner-space{min-width:0}
+  .owner-date{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  @media(max-width:760px){
+    #privateArea{padding:0 10px 24px;box-sizing:border-box}
+    .owner-grid{grid-template-columns:1fr}
+    .booking-item{padding:14px}
+    .booking-item-head{gap:10px;flex-wrap:wrap}
+    .booking-meta{display:grid !important;grid-template-columns:1fr !important;gap:8px !important}
+    .booking-financials{display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px !important}
+    .booking-actions{display:grid !important;grid-template-columns:1fr !important;gap:8px}
+    .booking-actions .btn{width:100%;min-width:0;min-height:46px}
+    .owner-date{display:grid;grid-template-columns:1fr;gap:10px}
+    .owner-date .btn{width:100%;min-height:44px}
+    .modal-card,.modal-shell{width:calc(100vw - 20px) !important;max-width:none !important;max-height:90vh;overflow:auto;box-sizing:border-box}
+    .admin-form-grid{grid-template-columns:1fr !important}
+    .modal-actions{display:grid;grid-template-columns:1fr !important;gap:8px}
+    .modal-actions .btn{width:100%;min-height:44px}
+  }
+  @media(max-width:430px){
+    #privateArea{padding-left:6px;padding-right:6px}
+    .booking-financials{grid-template-columns:1fr !important}
+    .booking-item h3{font-size:1.05rem}
+  }
+ `;
+ document.head.appendChild(st);
+}
 async function renderPrivateArea(){
+ ensurePrivateResponsiveStyles();
+
  const root=document.querySelector('#privateArea');if(!root)return;const client=await getClient();if(!client){root.innerHTML='<p class="message">No se ha configurado Supabase.</p>';return;}
  const {data:{user}}=await client.auth.getUser();if(!user){location.href='acceso.html';return;}
  const {data:profile}=await client.from('profiles').select('id,email,first_name,last_name,role,active').eq('id',user.id).maybeSingle();
@@ -460,7 +387,8 @@ async function renderPrivateArea(){
  document.querySelector('#privateRole').textContent=profile.role==='admin'?'Administrador':'Propietario';
  document.querySelector('#logoutBtn').addEventListener('click',async()=>{await client.auth.signOut();location.href='acceso.html';});
  if(profile.role==='admin'){
-   location.href='admin.html';
+   document.querySelector('#adminLink').hidden=false;
+   document.querySelector('#ownerContent').innerHTML='<p class="muted">Área de administración disponible desde el panel.</p>';
    return;
  }
  const {data:ownerId,error:ownerError}=await client.rpc('get_my_owner_id');
@@ -480,9 +408,9 @@ async function openOwnerSpaceEditor(client,spaceId){
  const s=data?.[0]; if(error||!s){alert(error?.message||'No se ha podido cargar el espacio.');return;}
  const holidayRes=await client.rpc('owner_get_space_holiday_price',{p_space_id:spaceId}); if(!holidayRes.error)s.holiday_price=Number(holidayRes.data||0);
  const dayRes=await client.rpc('owner_get_space_day_prices',{p_space_id:spaceId});const daily={};if(!dayRes.error)(dayRes.data||[]).forEach(x=>daily[x.day_of_week]=x.price);const d=n=>daily[n]??((n>=1&&n<=4)?(s.weekday_price??0):n===5?(s.friday_price??0):n===6?(s.saturday_price??0):(s.sunday_price??0));
- const modal=modalShell(`Gestionar · ${s.name}`,`<div class="admin-form-grid"><div class="form-wide"><p class="eyebrow">PRECIOS POR DÍA</p><div class="admin-form-grid"><label>Lunes (€)<input id="ownMon" type="number" min="0" step="0.01" value="${d(1)}"></label><label>Martes (€)<input id="ownTue" type="number" min="0" step="0.01" value="${d(2)}"></label><label>Miércoles (€)<input id="ownWed" type="number" min="0" step="0.01" value="${d(3)}"></label><label>Jueves (€)<input id="ownThu" type="number" min="0" step="0.01" value="${d(4)}"></label><label>Viernes (€)<input id="ownFri" type="number" min="0" step="0.01" value="${d(5)}"></label><label>Sábado (€)<input id="ownSat" type="number" min="0" step="0.01" value="${d(6)}"></label><label>Domingo (€)<input id="ownSun" type="number" min="0" step="0.01" value="${d(7)}"></label><label><strong>Festivo (€)</strong><input id="ownHoliday" type="number" min="0" step="0.01" value="${s.holiday_price??0}"></label><label><strong>Víspera de festivo (€)</strong><input id="ownHolidayEve" type="number" min="0" step="0.01" value="${s.eve_holiday_price??0}"></label></div></div><label>Apertura<input id="ownOpen" type="time" value="${String(s.opening_time||'11:00').slice(0,5)}"></label><label>Cierre<input id="ownClose" type="time" value="${String(s.closing_time||'23:00').slice(0,5)}"></label><label>Precio limpieza (€)<input id="ownCleanPrice" type="number" step="0.01" value="${s.cleaning_price??0}"></label><label>Fianza (€)<input id="ownDeposit" type="number" step="0.01" value="${s.deposit??0}"></label><label class="check-row"><input id="ownCleaning" type="checkbox" ${s.cleaning_available?'checked':''}> Ofrecer limpieza</label><label class="form-wide">Condiciones generales<textarea id="ownConditions">${esc(s.conditions_text||'')}</textarea></label></div><div class="owner-state-editor"><p>Administración: <strong>${s.admin_enabled?'Habilitado':'Deshabilitado'}</strong></p><p>Estado operativo: <strong>${s.owner_active?'Activo':'Inactivo'}</strong></p></div><button id="ownSaveSpace" class="btn btn-dark full" type="button">Guardar cambios</button><button id="ownToggleSpace" class="btn btn-light full" type="button" ${s.admin_enabled?'':'disabled'}>${s.owner_active?'Poner inactivo':'Activar espacio'}</button><p id="ownSpaceMsg" class="message"></p>`);
+ const modal=modalShell(`Gestionar · ${s.name}`,`<div class="admin-form-grid"><div class="form-wide"><p class="eyebrow">PRECIOS POR DÍA</p><div class="admin-form-grid"><label>Lunes (€)<input id="ownMon" type="number" min="0" step="0.01" value="${d(1)}"></label><label>Martes (€)<input id="ownTue" type="number" min="0" step="0.01" value="${d(2)}"></label><label>Miércoles (€)<input id="ownWed" type="number" min="0" step="0.01" value="${d(3)}"></label><label>Jueves (€)<input id="ownThu" type="number" min="0" step="0.01" value="${d(4)}"></label><label>Viernes (€)<input id="ownFri" type="number" min="0" step="0.01" value="${d(5)}"></label><label>Sábado (€)<input id="ownSat" type="number" min="0" step="0.01" value="${d(6)}"></label><label>Domingo (€)<input id="ownSun" type="number" min="0" step="0.01" value="${d(7)}"></label><label><strong>Festivo (€)</strong><input id="ownHoliday" type="number" min="0" step="0.01" value="${s.holiday_price??0}"></label></div></div><label>Apertura<input id="ownOpen" type="time" value="${String(s.opening_time||'11:00').slice(0,5)}"></label><label>Cierre<input id="ownClose" type="time" value="${String(s.closing_time||'23:00').slice(0,5)}"></label><label>Precio limpieza (€)<input id="ownCleanPrice" type="number" step="0.01" value="${s.cleaning_price??0}"></label><label>Fianza (€)<input id="ownDeposit" type="number" step="0.01" value="${s.deposit??0}"></label><label class="check-row"><input id="ownCleaning" type="checkbox" ${s.cleaning_available?'checked':''}> Ofrecer limpieza</label><label class="form-wide">Condiciones generales<textarea id="ownConditions">${esc(s.conditions_text||'')}</textarea></label></div><div class="owner-state-editor"><p>Administración: <strong>${s.admin_enabled?'Habilitado':'Deshabilitado'}</strong></p><p>Estado operativo: <strong>${s.owner_active?'Activo':'Inactivo'}</strong></p></div><button id="ownSaveSpace" class="btn btn-dark full" type="button">Guardar cambios</button><button id="ownToggleSpace" class="btn btn-light full" type="button" ${s.admin_enabled?'':'disabled'}>${s.owner_active?'Poner inactivo':'Activar espacio'}</button><p id="ownSpaceMsg" class="message"></p>`);
  const v=id=>modal.querySelector(id).value.trim(); const n=id=>Number(v(id)||0);
- modal.querySelector('#ownSaveSpace').onclick=async()=>{const r=await client.rpc('owner_update_space',{p_space_id:spaceId,p_weekday_price:n('#ownMon'),p_friday_price:n('#ownFri'),p_saturday_price:n('#ownSat'),p_sunday_price:n('#ownSun'),p_opening_time:v('#ownOpen')||'11:00',p_closing_time:v('#ownClose')||'23:00',p_cleaning_available:modal.querySelector('#ownCleaning').checked,p_cleaning_price:n('#ownCleanPrice'),p_deposit:n('#ownDeposit'),p_conditions:v('#ownConditions')||null});if(r.error){modal.querySelector('#ownSpaceMsg').textContent=r.error.message;return;}const dp=await client.rpc('owner_save_space_day_prices',{p_space_id:spaceId,p_monday:n('#ownMon'),p_tuesday:n('#ownTue'),p_wednesday:n('#ownWed'),p_thursday:n('#ownThu'),p_friday:n('#ownFri'),p_saturday:n('#ownSat'),p_sunday:n('#ownSun')});if(dp.error){modal.querySelector('#ownSpaceMsg').textContent=dp.error.message;return;}const hp=await client.rpc('owner_save_space_holiday_price',{p_space_id:spaceId,p_holiday_price:n('#ownHoliday')});if(hp.error){modal.querySelector('#ownSpaceMsg').textContent=hp.error.message;return;}const hep=await client.rpc('owner_save_space_eve_holiday_price',{p_space_id:spaceId,p_eve_holiday_price:n('#ownHolidayEve')});if(hep.error){modal.querySelector('#ownSpaceMsg').textContent=hep.error.message;return;}modal.remove();await renderPrivateArea();};
+ modal.querySelector('#ownSaveSpace').onclick=async()=>{const r=await client.rpc('owner_update_space',{p_space_id:spaceId,p_weekday_price:n('#ownMon'),p_friday_price:n('#ownFri'),p_saturday_price:n('#ownSat'),p_sunday_price:n('#ownSun'),p_opening_time:v('#ownOpen')||'11:00',p_closing_time:v('#ownClose')||'23:00',p_cleaning_available:modal.querySelector('#ownCleaning').checked,p_cleaning_price:n('#ownCleanPrice'),p_deposit:n('#ownDeposit'),p_conditions:v('#ownConditions')||null});if(r.error){modal.querySelector('#ownSpaceMsg').textContent=r.error.message;return;}const dp=await client.rpc('owner_save_space_day_prices',{p_space_id:spaceId,p_monday:n('#ownMon'),p_tuesday:n('#ownTue'),p_wednesday:n('#ownWed'),p_thursday:n('#ownThu'),p_friday:n('#ownFri'),p_saturday:n('#ownSat'),p_sunday:n('#ownSun')});if(dp.error){modal.querySelector('#ownSpaceMsg').textContent=dp.error.message;return;}const hp=await client.rpc('owner_save_space_holiday_price',{p_space_id:spaceId,p_holiday_price:n('#ownHoliday')});if(hp.error){modal.querySelector('#ownSpaceMsg').textContent=hp.error.message;return;}modal.remove();await renderPrivateArea();};
  modal.querySelector('#ownToggleSpace').onclick=async()=>{const r=await client.rpc('owner_set_space_active',{p_space_id:spaceId,p_active:!s.owner_active});if(r.error){modal.querySelector('#ownSpaceMsg').textContent=r.error.message;return;}modal.remove();await renderPrivateArea();};
 }
 
@@ -546,4 +474,3 @@ function modalShell(title,body){const modal=document.createElement('div');modal.
 function openOwnerEditor(client){const modal=modalShell('Nuevo propietario',`<div class="admin-form-grid"><label>Nombre<input id="ownFirst" required></label><label>Apellidos<input id="ownLast" required></label><label>Email<input id="ownEmail" type="email" required></label><label>Contraseña inicial<input id="ownPass" type="password" minlength="6" required></label><label>Teléfono<input id="ownPhone"></label><label>Dirección<input id="ownAddress"></label><label>Localidad<input id="ownCity"></label><label>Código postal<input id="ownPostal"></label><label>Nombre fiscal<input id="ownLegal"></label><label>NIF/CIF<input id="ownTax"></label></div><button id="ownSave" class="btn btn-dark full" type="button">Crear propietario</button><p id="ownMsg" class="message"></p>`);modal.querySelector('#ownSave').onclick=async()=>{const msg=modal.querySelector('#ownMsg'),v=id=>modal.querySelector(id).value.trim();msg.textContent='Creando…';const {data:{session}}=await client.auth.getSession();if(!session){msg.textContent='Sesión no válida.';return;}try{const res=await fetch(`${SUPABASE_URL}/functions/v1/create-owner`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({email:v('#ownEmail'),password:modal.querySelector('#ownPass').value,first_name:v('#ownFirst'),last_name:v('#ownLast'),phone:v('#ownPhone')||null,address:v('#ownAddress')||null,city:v('#ownCity')||null,postal_code:v('#ownPostal')||null,legal_name:v('#ownLegal')||null,tax_id:v('#ownTax')||null})});const data=await res.json();if(!res.ok)throw new Error(data.error||'No se pudo crear el propietario');msg.textContent='Propietario creado correctamente.';setTimeout(()=>{modal.remove();initAdminArea();},600);}catch(e){msg.textContent=e.message;}};}
 function openSpaceEditor(client,owners){if(!owners.length){alert('Primero debes crear un propietario.');return;}const options=owners.filter(o=>o.active).map(o=>`<option value="${esc(o.owner_id)}">${esc((o.first_name||'')+' '+(o.last_name||'')+' · '+o.email)}</option>`).join('');const modal=modalShell('Nuevo local',`<div class="admin-form-grid"><label>Propietario<select id="spOwner">${options}</select></label><label>Nombre del local<input id="spName" required></label><label>Localidad<input id="spCity" value="Lucena"></label><label>Provincia<input id="spProvince" value="Córdoba"></label><label>Precio lunes–jueves (€)<input id="spWeek" type="number" min="0" step="0.01"></label><label>Precio viernes (€)<input id="spFri" type="number" min="0" step="0.01"></label><label>Precio sábado (€)<input id="spSat" type="number" min="0" step="0.01"></label><label>Precio domingo (€)<input id="spSun" type="number" min="0" step="0.01"></label><label>Fianza (€)<input id="spDep" type="number" min="0" step="0.01"><span class="micro">Vacío = sin fianza.</span></label><label>Inicio actividad<input id="spFrom" type="date"></label><label>Fin actividad<input id="spUntil" type="date"></label><label>Dirección<input id="spAddress"></label><label>Latitud<input id="spLat" type="number" step="0.000001"></label><label>Longitud<input id="spLng" type="number" step="0.000001"></label><label>Descripción<textarea id="spDesc"></textarea></label></div><button id="spLocate" class="btn btn-light" type="button">Ubicar dirección en el mapa</button><button id="spSave" class="btn btn-dark full" type="button">Crear local</button><p id="spMsg" class="message"></p>`);modal.querySelector('#spLocate').onclick=async()=>{const msg=modal.querySelector('#spMsg');const address=modal.querySelector('#spAddress').value.trim();if(!address){msg.textContent='Introduce primero una dirección.';return;}msg.textContent='Buscando ubicación…';const found=await geocodeSpace({address,city:modal.querySelector('#spCity').value.trim(),province:modal.querySelector('#spProvince').value.trim()});if(!Number.isFinite(Number(found.latitude))||!Number.isFinite(Number(found.longitude))){msg.textContent='No se ha encontrado esa dirección. Revisa la dirección e inténtalo de nuevo.';return;}modal.querySelector('#spLat').value=Number(found.latitude).toFixed(6);modal.querySelector('#spLng').value=Number(found.longitude).toFixed(6);msg.textContent='Ubicación encontrada. Guarda el local.';};modal.querySelector('#spSave').onclick=async()=>{const msg=modal.querySelector('#spMsg'),v=id=>modal.querySelector(id).value.trim(),num=id=>v(id)===''?null:Number(v(id));msg.textContent='Creando…';const {data,error}=await client.rpc('admin_create_space',{p_owner_id:v('#spOwner'),p_name:v('#spName'),p_city:v('#spCity')||null,p_province:v('#spProvince')||null,p_description:v('#spDesc')||null,p_weekday_price:num('#spWeek'),p_friday_price:num('#spFri'),p_saturday_price:num('#spSat'),p_sunday_price:num('#spSun'),p_deposit:num('#spDep'),p_address:v('#spAddress')||null,p_latitude:num('#spLat'),p_longitude:num('#spLng'),p_active:true,p_active_from:v('#spFrom')||null,p_active_until:v('#spUntil')||null});if(error){msg.textContent=error.message;return;}msg.textContent='Local creado correctamente.';setTimeout(()=>{modal.remove();initAdminArea();},600);};}
 function openAdminEditor(id,s,client){const modal=document.createElement('div');modal.className='modal-backdrop';modal.innerHTML=`<div class="modal-card"><div class="section-head"><div><p class="eyebrow">EDITAR LOCAL</p><h2>${esc(s.name)}</h2></div><button class="modal-close btn btn-light" type="button">Cerrar</button></div><div class="admin-form-grid"><label>Publicado como activo<input id="admActive" type="checkbox" ${s.active?'checked':''}></label><label>Inicio de actividad<input id="admFrom" type="date" value="${esc(s.active_from||'')}"></label><label>Fin de actividad<input id="admUntil" type="date" value="${esc(s.active_until||'')}"></label><label>Lunes–jueves (€)<input id="admWeekday" type="number" min="0" step="0.01" value="${s.weekday_price??''}"></label><label>Viernes (€)<input id="admFriday" type="number" min="0" step="0.01" value="${s.friday_price??''}"></label><label>Sábado (€)<input id="admSaturday" type="number" min="0" step="0.01" value="${s.saturday_price??''}"></label><label>Domingo (€)<input id="admSunday" type="number" min="0" step="0.01" value="${s.sunday_price??''}"></label><label>Fianza (€)<input id="admDeposit" type="number" min="0" step="0.01" value="${s.deposit==null?'':s.deposit}"><span class="micro">Vacío = sin fianza.</span></label><label>Dirección<input id="admAddress" type="text" value="${esc(s.address||'')}"></label><label>Latitud<input id="admLat" type="number" step="0.000001" value="${s.latitude??''}"></label><label>Longitud<input id="admLng" type="number" step="0.000001" value="${s.longitude??''}"></label></div><button id="admLocate" class="btn btn-light" type="button">Ubicar dirección en el mapa</button><button id="admSave" class="btn btn-dark full" type="button">Guardar cambios</button><p id="admEditorMsg" class="message"></p></div>`;document.body.appendChild(modal);modal.querySelector('.modal-close').onclick=()=>modal.remove();modal.querySelector('#admLocate').onclick=async()=>{const msg=modal.querySelector('#admEditorMsg');const address=modal.querySelector('#admAddress').value.trim();if(!address){msg.textContent='Introduce primero una dirección.';return;}msg.textContent='Buscando ubicación…';const found=await geocodeSpace({address,city:s.city,province:s.province});if(!Number.isFinite(Number(found.latitude))||!Number.isFinite(Number(found.longitude))){msg.textContent='No se ha encontrado esa dirección. Revisa la dirección e inténtalo de nuevo.';return;}modal.querySelector('#admLat').value=Number(found.latitude).toFixed(6);modal.querySelector('#admLng').value=Number(found.longitude).toFixed(6);msg.textContent='Ubicación encontrada. Guarda los cambios.';};modal.querySelector('#admSave').onclick=async()=>{const msg=modal.querySelector('#admEditorMsg');const val=id=>modal.querySelector(id).value;const num=id=>val(id)===''?null:Number(val(id));msg.textContent='Guardando…';const {error}=await client.rpc('admin_update_space',{p_space_id:id,p_active:modal.querySelector('#admActive').checked,p_active_from:val('#admFrom')||null,p_active_until:val('#admUntil')||null,p_weekday_price:num('#admWeekday'),p_friday_price:num('#admFriday'),p_saturday_price:num('#admSaturday'),p_sunday_price:num('#admSunday'),p_deposit:num('#admDeposit'),p_address:val('#admAddress')||null,p_latitude:num('#admLat'),p_longitude:num('#admLng')});if(error){msg.textContent=error.message;return;}modal.remove();initAdminArea();};}
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initOwnerContact);}else{initOwnerContact();}
