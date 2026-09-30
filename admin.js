@@ -444,7 +444,7 @@
         ${upcoming.length?`<div class="admin-list">${upcoming.map(b=>`<div class="admin-list-row"><div><strong>${esc(b.space_name)}</strong><span>${esc(b.customer_name)} · ${date(b.start_date)} → ${date(b.end_date)}</span></div><span class="status status-confirmed">Confirmada</span></div>`).join('')}</div>`:'<p class="muted">No hay próximas reservas.</p>'}
       </section>
     </div>`;
-    root.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>root.querySelector(`[data-view="${b.dataset.go}"]`)?.click());
+    root.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const target=root.querySelector(`[data-view=\"${b.dataset.go}\"]`);if(target){target.click();}else{renderView(b.dataset.go);}});
   }
 
   function renderSpaces(root){
