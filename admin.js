@@ -174,7 +174,7 @@
       <label>Nombre<input id="name" required value="${esc(s?.name||'')}"></label>
       <label>Localidad<input id="city" value="${esc(s?.city||'')}"></label>
       <label>Provincia<input id="province" value="${esc(s?.province||'')}"></label>
-      <div class="form-wide"><p class="eyebrow">PRECIOS POR DÍA</p><div class="admin-form-grid"><label>Lunes (€)<input id="monday" type="number" min="0" step="0.01" value="${d(1)}"></label><label>Martes (€)<input id="tuesday" type="number" min="0" step="0.01" value="${d(2)}"></label><label>Miércoles (€)<input id="wednesday" type="number" min="0" step="0.01" value="${d(3)}"></label><label>Jueves (€)<input id="thursday" type="number" min="0" step="0.01" value="${d(4)}"></label><label>Viernes (€)<input id="friday" type="number" min="0" step="0.01" value="${d(5)}"></label><label>Sábado (€)<input id="saturday" type="number" min="0" step="0.01" value="${d(6)}"></label><label>Domingo (€)<input id="sunday" type="number" min="0" step="0.01" value="${d(7)}"></label></div></div>
+      <div class="form-wide"><p class="eyebrow">PRECIOS POR DÍA</p><div class="admin-form-grid"><label>Lunes (€)<input id="monday" type="number" min="0" step="0.01" value="${d(1)}"></label><label>Martes (€)<input id="tuesday" type="number" min="0" step="0.01" value="${d(2)}"></label><label>Miércoles (€)<input id="wednesday" type="number" min="0" step="0.01" value="${d(3)}"></label><label>Jueves (€)<input id="thursday" type="number" min="0" step="0.01" value="${d(4)}"></label><label>Viernes (€)<input id="friday" type="number" min="0" step="0.01" value="${d(5)}"></label><label>Sábado (€)<input id="saturday" type="number" min="0" step="0.01" value="${d(6)}"></label><label>Domingo (€)<input id="sunday" type="number" min="0" step="0.01" value="${d(7)}"></label><label><strong>Festivo (€)</strong><input id="holiday" type="number" min="0" step="0.01" value="${s?.holiday_price??0}"></label><label><strong>Víspera de festivo (€)</strong><input id="holidayEve" type="number" min="0" step="0.01" value="${s?.eve_holiday_price??0}"></label></div></div>
       <label>Hora de apertura<input id="opening" type="time" value="${esc(s?.opening_time||'11:00')}" ></label>
       <label>Hora de cierre<input id="closing" type="time" value="${esc(s?.closing_time||'23:00')}" ></label>
       <label>Fianza (€)<input id="deposit" type="number" min="0" step="0.01" value="${s?.deposit??''}"></label>
@@ -198,6 +198,10 @@
       const spaceId=edit?s.id:r.data;
       const dp=await c.rpc('admin_save_space_day_prices',{p_space_id:spaceId,p_monday:num(m,'#monday')??0,p_tuesday:num(m,'#tuesday')??0,p_wednesday:num(m,'#wednesday')??0,p_thursday:num(m,'#thursday')??0,p_friday:num(m,'#friday')??0,p_saturday:num(m,'#saturday')??0,p_sunday:num(m,'#sunday')??0});
       if(dp.error){msg.textContent=dp.error.message;msg.classList.add('error');return;}
+      const hp=await c.rpc('admin_save_space_holiday_price',{p_space_id:spaceId,p_holiday_price:num(m,'#holiday')??0});
+      if(hp.error){msg.textContent=hp.error.message;msg.classList.add('error');return;}
+      const hep=await c.rpc('admin_save_space_eve_holiday_price',{p_space_id:spaceId,p_eve_holiday_price:num(m,'#holidayEve')??0});
+      if(hep.error){msg.textContent=hep.error.message;msg.classList.add('error');return;}
       m.remove();await refresh();renderView('spaces');
     };
   }
