@@ -973,236 +973,86 @@ AS $function$
 DECLARE
     b public.bookings%rowtype;
     s public.spaces%rowtype;
-
-    x jsonb;
-    sid uuid;
-    sname text;
-    sprice numeric;
-
-    services jsonb := '[]'::jsonb;
-    service_total numeric := 0;
-
-    week numeric;
-    fri numeric;
-    sat numeric;
-    sun numeric;
-    dep numeric;
-    ca boolean;
-    cp numeric;
-
-    rental numeric := 0;
-    clean numeric := 0;
-
-    d date;
-
-    owner_email text;
-    owner_name text;
+    v_quote jsonb;
 BEGIN
-
-    IF NOT private.is_owner()
-       AND NOT private.is_admin()
-    THEN
+    IF NOT private.is_owner() AND NOT private.is_admin() THEN
         RAISE EXCEPTION 'No tienes permisos';
     END IF;
 
-
-    SELECT *
-    INTO b
+    SELECT * INTO b
     FROM public.bookings
     WHERE id = p_booking_id
     FOR UPDATE;
-
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Reserva no encontrada';
     END IF;
 
-
-    -- BLOQUEO DEL ESPACIO ANTES DE COMPROBAR FECHAS
-
-    SELECT *
-    INTO s
+    SELECT * INTO s
     FROM public.spaces
     WHERE id = b.space_id
     FOR UPDATE;
-
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'El espacio no existe';
     END IF;
 
-
-    IF private.is_owner()
-       AND s.owner_id <> private.current_owner_id()
-    THEN
+    IF private.is_owner() AND s.owner_id <> private.current_owner_id() THEN
         RAISE EXCEPTION 'No tienes permisos sobre esta reserva';
     END IF;
-
 
     IF b.booking_status <> 'confirmed' THEN
         RAISE EXCEPTION 'Solo se pueden modificar reservas confirmadas';
     END IF;
 
-
-    IF p_start_date IS NULL
-       OR p_end_date IS NULL
-       OR p_end_date < p_start_date
-    THEN
+    IF p_start_date IS NULL OR p_end_date IS NULL OR p_end_date < p_start_date THEN
         RAISE EXCEPTION 'Rango de fechas no válido';
     END IF;
-
 
     IF p_start_date < current_date THEN
         RAISE EXCEPTION 'No se pueden modificar fechas ya iniciadas';
     END IF;
 
-
     IF EXISTS (
         SELECT 1
-        FROM public.bookings z
-        WHERE z.id <> b.id
-          AND z.space_id = b.space_id
-          AND z.booking_status IN ('pending','confirmed')
-          AND z.start_date <= p_end_date
-          AND z.end_date >= p_start_date
-    )
-    THEN
+        FROM public.bookings other_booking
+        WHERE other_booking.id <> b.id
+          AND other_booking.space_id = b.space_id
+          AND other_booking.booking_status IN ('pending','confirmed')
+          AND other_booking.start_date <= p_end_date
+          AND other_booking.end_date >= p_start_date
+    ) THEN
         RAISE EXCEPTION 'Las nuevas fechas no están disponibles';
     END IF;
 
-
     IF EXISTS (
         SELECT 1
-        FROM public.blocked_dates z
-        WHERE z.space_id = b.space_id
-          AND z.start_date <= p_end_date
-          AND z.end_date >= p_start_date
-    )
-    THEN
+        FROM public.blocked_dates blocked
+        WHERE blocked.space_id = b.space_id
+          AND blocked.start_date <= p_end_date
+          AND blocked.end_date >= p_start_date
+    ) THEN
         RAISE EXCEPTION 'Las nuevas fechas no están disponibles';
     END IF;
 
-
-    SELECT
-        weekday_price,
-        friday_price,
-        saturday_price,
-        sunday_price,
-        deposit,
-        cleaning_available,
-        cleaning_price
-    INTO
-        week,
-        fri,
-        sat,
-        sun,
-        dep,
-        ca,
-        cp
-    FROM public.spaces
-    WHERE id = s.id;
-
-
-    IF p_cleaning_requested AND NOT ca THEN
-        RAISE EXCEPTION 'El servicio de limpieza no está disponible';
-    END IF;
-
-
-    FOR d IN
-        SELECT generate_series(
-            p_start_date,
-            p_end_date,
-            interval '1 day'
-        )::date
-    LOOP
-
-        rental := rental + public.get_space_price_for_date(s.id,d);
-
-    END LOOP;
-
-
-    IF p_cleaning_requested THEN
-        clean := coalesce(cp,0);
-    END IF;
-
-
-    FOR x IN
-        SELECT value
-        FROM jsonb_array_elements(
-            coalesce(p_selected_services,'[]'::jsonb)
-        )
-    LOOP
-
-        sid := (x->>'id')::uuid;
-
-        SELECT
-            sc.name,
-            ss.price
-        INTO
-            sname,
-            sprice
-        FROM public.space_services ss
-        JOIN public.service_catalog sc
-            ON sc.id = ss.service_id
-        WHERE ss.id = sid
-          AND ss.space_id = s.id
-          AND ss.active = true
-          AND ss.included = false
-          AND sc.active = true;
-
-
-        IF NOT FOUND THEN
-            RAISE EXCEPTION
-                'Uno de los servicios seleccionados ya no está disponible';
-        END IF;
-
-
-        service_total :=
-            service_total + coalesce(sprice,0);
-
-        services :=
-            services ||
-            jsonb_build_array(
-                jsonb_build_object(
-                    'id', sid,
-                    'name', sname,
-                    'price', sprice
-                )
-            );
-
-    END LOOP;
-
+    v_quote := public.get_booking_quote(
+        b.space_id,
+        p_start_date,
+        p_end_date,
+        coalesce(p_cleaning_requested,false),
+        coalesce(p_selected_services,'[]'::jsonb)
+    );
 
     UPDATE public.bookings
-    SET
-        start_date = p_start_date,
+    SET start_date = p_start_date,
         end_date = p_end_date,
         total_days = (p_end_date - p_start_date) + 1,
-        cleaning_requested = coalesce(
-            p_cleaning_requested,
-            false
-        ),
-        customer_notes =
-            nullif(btrim(p_customer_notes),''),
-        pricing_snapshot =
-            jsonb_build_object(
-                'rental_total', round(rental,2),
-                'cleaning_total', round(clean,2),
-                'services_total', round(service_total,2),
-                'deposit', round(coalesce(dep,0),2),
-                'grand_total',
-                    round(
-                        rental
-                        + clean
-                        + service_total
-                        + coalesce(dep,0),
-                        2
-                    )
-            ),
-        services_snapshot = services,
+        cleaning_requested = coalesce(p_cleaning_requested,false),
+        customer_notes = nullif(btrim(p_customer_notes),''),
+        pricing_snapshot = v_quote,
+        services_snapshot = v_quote -> 'services_snapshot',
         updated_at = now()
     WHERE id = b.id;
-
 
     PERFORM public.final_queue_email(
         'reservas',
@@ -1219,7 +1069,6 @@ BEGIN
         s.id
     );
 
-
     PERFORM public.final_queue_email(
         'reservas',
         'owner_booking_final',
@@ -1231,8 +1080,7 @@ BEGIN
             'customer_name', b.customer_name,
             'status', 'updated',
             'comment',
-                CASE
-                    WHEN private.is_admin()
+                CASE WHEN private.is_admin()
                     THEN 'Reserva modificada por el administrador'
                     ELSE 'Reserva modificada por el propietario'
                 END
@@ -1240,7 +1088,6 @@ BEGIN
         b.id,
         s.id
     );
-
 END;
 $function$;
 revoke all on function public.owner_update_booking(uuid,date,date,boolean,jsonb,text) from public,anon; grant execute on function public.owner_update_booking(uuid,date,date,boolean,jsonb,text) to authenticated;
@@ -1445,6 +1292,7 @@ DECLARE
     v_rental numeric := 0;
     v_cleaning numeric := 0;
     v_services_total numeric := 0;
+    v_service_total numeric := 0;
     v_has_override boolean := false;
     v_day date;
     v_price numeric;
@@ -1474,7 +1322,9 @@ BEGIN
         RAISE EXCEPTION 'No se pueden solicitar fechas pasadas';
     END IF;
 
-    IF NOT public.final_space_is_public(p_space_id) THEN
+    IF NOT public.final_space_is_public(p_space_id)
+       AND NOT private.is_admin()
+       AND NOT (private.is_owner() AND private.owns_space(p_space_id)) THEN
         RAISE EXCEPTION 'El espacio no está disponible públicamente';
     END IF;
 
@@ -1509,12 +1359,15 @@ BEGIN
             interval '1 day'
         )::date
     LOOP
-        v_price := public.get_space_price_for_date(
+        v_price := coalesce(public.get_space_price_for_date(
             p_space_id,
             v_day
-        );
+        ),0);
 
         v_rental := v_rental + v_price;
+        v_daily := v_daily || jsonb_build_array(
+            jsonb_build_object('date',v_day,'price',v_price)
+        );
     END LOOP;
 
     IF p_cleaning_requested THEN
@@ -1529,6 +1382,10 @@ BEGIN
     LOOP
 
         v_service_id := (v_requested->>'id')::uuid;
+
+        IF v_service_id = ANY(v_selected_ids) THEN
+            RAISE EXCEPTION 'Un servicio no se puede seleccionar más de una vez';
+        END IF;
 
         SELECT
             sc.name,
@@ -1562,8 +1419,29 @@ BEGIN
                 'Uno de los servicios seleccionados ya no está disponible';
         END IF;
 
-        v_services_total :=
-            v_services_total + coalesce(v_service_price,0);
+        IF v_group IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.space_services previous
+            WHERE previous.id = ANY(v_selected_ids)
+              AND previous.selection_group = v_group
+        ) THEN
+            RAISE EXCEPTION 'Solo puedes elegir una opción por grupo';
+        END IF;
+
+        IF coalesce(array_length(v_allowed,1),0) > 0 AND EXISTS (
+            SELECT 1
+            FROM generate_series(p_start_date,p_end_date,interval '1 day') AS dates(day_value)
+            WHERE NOT (extract(isodow FROM dates.day_value)::smallint = ANY(v_allowed))
+        ) THEN
+            RAISE EXCEPTION 'El servicio seleccionado no está disponible para todos los días elegidos';
+        END IF;
+
+        v_service_total := coalesce(v_service_price,0) *
+            CASE WHEN v_mode = 'per_day' THEN v_days ELSE 1 END;
+        v_services_total := v_services_total + v_service_total;
+        v_selected_ids := array_append(v_selected_ids,v_service_id);
+        IF coalesce(v_replaces,false) THEN
+            v_has_override := true;
+        END IF;
 
         v_services :=
             v_services ||
@@ -1571,10 +1449,51 @@ BEGIN
                 jsonb_build_object(
                     'id',v_service_id,
                     'name',v_service_name,
-                    'price',v_service_price
+                    'price',coalesce(v_service_price,0),
+                    'total',round(v_service_total,2),
+                    'price_mode',coalesce(v_mode,'fixed')
                 )
             );
     END LOOP;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.space_services selected_service
+        WHERE selected_service.id = ANY(v_selected_ids)
+          AND selected_service.depends_on_service_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM public.space_services dependency
+              WHERE dependency.space_id = p_space_id
+                AND dependency.service_id = selected_service.depends_on_service_id
+                AND dependency.id = ANY(v_selected_ids)
+                AND dependency.active = true
+                AND dependency.included = false
+          )
+    ) THEN
+        RAISE EXCEPTION 'Uno de los servicios seleccionados requiere otra opción';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.space_services required_service
+        JOIN public.service_catalog required_catalog
+          ON required_catalog.id = required_service.service_id
+        WHERE required_service.space_id = p_space_id
+          AND required_service.active = true
+          AND required_service.included = false
+          AND required_catalog.active = true
+          AND required_service.selection_group IS NOT NULL
+        GROUP BY required_service.selection_group
+        HAVING bool_or(required_service.selection_required)
+           AND NOT bool_or(required_service.id = ANY(v_selected_ids))
+    ) THEN
+        RAISE EXCEPTION 'Debes seleccionar una opción en cada grupo obligatorio';
+    END IF;
+
+    IF v_has_override THEN
+        v_rental := 0;
+    END IF;
 
     RETURN jsonb_build_object(
         'rental_total', round(v_rental,2),
