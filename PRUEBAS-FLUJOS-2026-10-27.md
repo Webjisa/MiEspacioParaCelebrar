@@ -2,15 +2,16 @@
 
 ## Resultado general
 
-Se ha sincronizado el código de las dos Edge Functions de producción con GitHub y se ha revisado el recorrido de reserva. Se aplicaron dos migraciones SQL correctivas en producción y se actualizaron el SQL consolidado y los recursos del frontend. No se crearon reservas nuevas durante esta revisión.
+Se ha revisado el recorrido de reserva, se han sincronizado tres Edge Functions con GitHub y se han aplicado varias correcciones SQL en producción. El SQL consolidado se ha actualizado. No se crearon reservas nuevas ni se enviaron correos de prueba a clientes durante esta revisión.
 
 ## Comprobaciones superadas
 
 | Área | Resultado | Evidencia |
 |---|---|---|
-| Sincronización de fuentes | OK | El contenido de `supabase/functions/email-worker/index.ts` coincide exactamente con `email-worker` desplegada (versión 16). |
-| Sincronización de fuentes | OK | El contenido de `supabase/functions/booking-action/index.ts` coincide exactamente con `booking-action` desplegada (versión 3). |
-| Revisión de secretos | OK | No se encontraron claves o tokens literales reconocibles en los dos archivos sincronizados; se leen desde variables de entorno. |
+| Sincronización de fuentes | OK | `supabase/functions/email-worker/index.ts` coincide con `email-worker` desplegada (versión 17). |
+| Sincronización de fuentes | OK | `supabase/functions/booking-action/index.ts` coincide con `booking-action` desplegada (versión 3). |
+| Sincronización de fuentes | OK | `supabase/functions/create-owner/index.ts` coincide con `create-owner` desplegada (versión 12); la diferencia encontrada era solo de comentarios. |
+| Revisión de secretos | OK estático | Los tres archivos sincronizados leen credenciales desde el entorno o las aporta el contexto autenticado; no se han encontrado claves privadas pegadas en el código fuente. |
 | Integración de correo | OK | `email-worker` exige POST y el encabezado secreto `x-cron-secret`, reclama lotes de `email_queue` y envía a través de Brevo. |
 | Integración de decisiones | OK | `decidir-reserva.html` envía `{token, action}` por POST a `booking-action`; el backend valida el token/acción y llama al RPC desde servidor. |
 | Formulario de reserva | OK estático | `app.js` llama a `create_booking_request` y consulta rangos no disponibles con `get_space_unavailable_ranges`. |
@@ -19,9 +20,9 @@ Se ha sincronizado el código de las dos Edge Functions de producción con GitHu
 | Modificación de reservas | CORREGIDO | `owner_update_booking` utiliza `get_space_price_for_date` para recalcular el alquiler, respetando precios por día, festivos y vísperas. |
 | Presupuesto en la ficha | CORREGIDO | `app.js` carga `holiday_eve_price` y aplica esa tarifa cuando la fecha siguiente figura como festivo. |
 | Fallo al consultar disponibilidad | CORREGIDO ESTÁTICO | Si falla `get_space_unavailable_ranges`, la ficha no permite enviar la solicitud y la búsqueda general no ofrece resultados como si todas las fechas estuvieran libres. |
-| Emails de encuestas | OK estático | El trabajador contiene una plantilla `survey_created`; el cron diario de encuestas figura activo en Supabase. |
+| Encuestas | CORREGIDO, PARCIALMENTE VALIDADO | Se calificaron con `extensions` las llamadas a `digest` y `gen_random_bytes`, y se añadió bloqueo para evitar dos envíos simultáneos del mismo token. Una llamada con token ficticio se rechazó con el error esperado. No hay encuestas ni reservas confirmadas que terminasen ayer; la función de cola devolvió 0 y no se envió ningún correo. El cron de encuestas está activo, pero todavía no hay ejecución registrada en `cron.job_run_details`. |
 | Caducidad de solicitudes | OK en producción | La prueba anterior de caducidad acabó con la solicitud en estado `expired` y los avisos `customer_expired` y `admin_booking_final` enviados. |
-| Cola de emails | OK en producción | En la última comprobación, los 21 elementos estaban en estado `sent`; no había elementos pendientes o fallidos. |
+| Cola de emails | OK en cola | Los 30 elementos existentes aparecen con estado `sent`; no hay registros en otros estados. Esto refleja el estado de la cola, no garantiza por sí solo que cada proveedor de correo haya entregado el mensaje. |
 | Automatizaciones | OK en configuración | Están activos el worker de emails, la caducidad de reservas, los recordatorios y los trabajos diarios de limpieza, caducidad de espacios y encuestas. |
 | Recursos estáticos | OK tras corrección | Se actualizaron las referencias de caché en portada, acceso, listado, ficha, disponibilidad, área privada y encuesta para cargar los recursos actuales. |
 
