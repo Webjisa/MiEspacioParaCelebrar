@@ -1597,3 +1597,213 @@ END;
 $function$;
 revoke all on function public.get_booking_quote(uuid,date,date,boolean,jsonb) from public;
 grant execute on function public.get_booking_quote(uuid,date,date,boolean,jsonb) to anon, authenticated;
+
+-- ============================================================
+-- 31. CONSUMO SEGURO DE TOKENS PARA DECISIÓN DE RESERVA
+-- La función solo se invoca desde la Edge Function booking-action
+-- mediante la clave de servidor; no debe exponerse a anon/authenticated.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.consume_owner_booking_action_token(p_token text, p_action text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
+DECLARE
+    v_hash text;
+    t public.owner_booking_action_tokens%rowtype;
+    b public.bookings%rowtype;
+    s public.spaces%rowtype;
+    v_owner_email text;
+    v_owner_name text;
+    v_new_status text;
+BEGIN
+    IF nullif(btrim(p_token), '') IS NULL THEN
+        RAISE EXCEPTION 'Token no válido';
+    END IF;
+
+    IF p_action NOT IN ('confirm', 'reject') THEN
+        RAISE EXCEPTION 'Acción no válida';
+    END IF;
+
+    v_hash := encode(
+        extensions.digest(btrim(p_token), 'sha256'),
+        'hex'
+    );
+
+    SELECT *
+    INTO t
+    FROM public.owner_booking_action_tokens
+    WHERE token_hash = v_hash
+      AND action = p_action
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Enlace no válido o caducado';
+    END IF;
+
+    IF t.used_at IS NOT NULL THEN
+        RAISE EXCEPTION 'Este enlace ya ha sido utilizado';
+    END IF;
+
+    IF t.expires_at IS NULL OR t.expires_at <= now() THEN
+        RAISE EXCEPTION 'Este enlace ha caducado';
+    END IF;
+
+    SELECT *
+    INTO b
+    FROM public.bookings
+    WHERE id = t.booking_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'La solicitud ya no existe';
+    END IF;
+
+    SELECT *
+    INTO s
+    FROM public.spaces
+    WHERE id = b.space_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El espacio no existe';
+    END IF;
+
+    IF s.owner_id <> t.owner_id THEN
+        RAISE EXCEPTION 'El propietario ya no coincide con la solicitud';
+    END IF;
+
+    IF b.booking_status <> 'pending' THEN
+        RAISE EXCEPTION 'La solicitud ya no está pendiente';
+    END IF;
+
+    -- La caducidad de la reserva se gestiona en expire_pending_bookings().
+    -- Aquí solo se impide actuar sobre una solicitud vencida.
+    IF b.expires_at IS NULL OR b.expires_at <= now() THEN
+        RAISE EXCEPTION 'La solicitud ha caducado';
+    END IF;
+
+    IF p_action = 'confirm' THEN
+
+        IF EXISTS (
+            SELECT 1
+            FROM public.bookings x
+            WHERE x.id <> b.id
+              AND x.space_id = b.space_id
+              AND x.booking_status = 'confirmed'
+              AND x.start_date <= b.end_date
+              AND x.end_date >= b.start_date
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM public.blocked_dates x
+            WHERE x.space_id = b.space_id
+              AND x.start_date <= b.end_date
+              AND x.end_date >= b.start_date
+        )
+        THEN
+            RAISE EXCEPTION 'Las fechas ya no están disponibles';
+        END IF;
+
+        v_new_status := 'confirmed';
+    ELSE
+        v_new_status := 'rejected';
+    END IF;
+
+    UPDATE public.bookings
+    SET
+        booking_status = v_new_status,
+        expires_at = NULL,
+        finalized_at = now(),
+        updated_at = now()
+    WHERE id = b.id;
+
+    -- Invalidar todos los enlaces no utilizados de esta reserva.
+    UPDATE public.owner_booking_action_tokens
+    SET used_at = now()
+    WHERE booking_id = b.id
+      AND used_at IS NULL;
+
+    SELECT
+        p.email,
+        trim(
+            coalesce(p.first_name, '')
+            || ' '
+            || coalesce(p.last_name, '')
+        )
+    INTO v_owner_email, v_owner_name
+    FROM public.owners o
+    JOIN public.profiles p
+      ON p.id = o.profile_id
+    WHERE o.id = t.owner_id;
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        CASE
+            WHEN p_action = 'confirm'
+                THEN 'customer_confirmed'
+            ELSE 'customer_not_processed'
+        END,
+        b.customer_email,
+        b.customer_name,
+        jsonb_build_object(
+            'booking_id', b.id,
+            'space_name', s.name,
+            'start_date', b.start_date,
+            'end_date', b.end_date
+        ),
+        b.id,
+        b.space_id
+    );
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        CASE
+            WHEN p_action = 'confirm'
+                THEN 'owner_booking_confirmed'
+            ELSE 'owner_booking_rejected'
+        END,
+        v_owner_email,
+        v_owner_name,
+        jsonb_build_object(
+            'booking_id', b.id,
+            'space_name', s.name,
+            'customer_name', b.customer_name,
+            'start_date', b.start_date,
+            'end_date', b.end_date,
+            'status', v_new_status
+        ),
+        b.id,
+        b.space_id
+    );
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        'admin_booking_final',
+        'miespacioparacelebrar@gmail.com',
+        'Admin',
+        jsonb_build_object(
+            'booking_id', b.id,
+            'space_name', s.name,
+            'customer_name', b.customer_name,
+            'status', v_new_status,
+            'comment',
+            'Decisión realizada desde el enlace del correo del propietario'
+        ),
+        b.id,
+        b.space_id
+    );
+
+    RETURN jsonb_build_object(
+        'ok', true,
+        'status', v_new_status,
+        'booking_id', b.id,
+        'space_name', s.name,
+        'owner_name', v_owner_name,
+        'customer_name', b.customer_name
+    );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.consume_owner_booking_action_token(text,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.consume_owner_booking_action_token(text,text) TO service_role;
