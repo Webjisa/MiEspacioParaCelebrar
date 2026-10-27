@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Decisión de reserva · MiEspacioParaCelebrar</title>
 <link rel="stylesheet" href="styles.css?v=20260930">
+<script src="supabase-config.js?v=final"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <style>
 .decision-card{background:#fff;border:1px solid #e5e5e5;border-radius:20px;padding:32px;box-shadow:0 8px 24px rgba(52,66,52,.06)}
 .decision-action{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid #d2d5c8;border-radius:999px;background:#cacdbd;color:#344234;font-size:14px;font-weight:800;text-decoration:none;cursor:pointer}
@@ -50,7 +52,9 @@
 <script>
 (() => {
   const SUPABASE_URL = 'https://hvuseljtqdgekotrsiwd.supabase.co';
-  const ACTION_URL = `${SUPABASE_URL}/functions/v1/booking-action`;
+  const client = window.supabase && window.MIESPACIO_SUPABASE_ANON_KEY
+    ? window.supabase.createClient(SUPABASE_URL, window.MIESPACIO_SUPABASE_ANON_KEY)
+    : null;
   const params = new URLSearchParams(location.search);
   const token = params.get('token') || '';
   const action = params.get('action') || '';
@@ -81,13 +85,15 @@
     button.disabled = true;
     message.textContent = 'Procesando…';
     try {
-      const response = await fetch(ACTION_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, action })
+      if (!client) {
+        throw new Error('No se ha podido conectar con el sistema de reservas. Recarga la página e inténtalo de nuevo.');
+      }
+      const { data, error } = await client.rpc('consume_owner_booking_action_token', {
+        p_token: token,
+        p_action: action
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'No se pudo procesar la solicitud.');
+      if (error) throw new Error(error.message || 'No se pudo procesar la solicitud.');
+      if (!data || data.ok !== true) throw new Error('No se pudo procesar la solicitud. El enlace puede haber caducado o haberse utilizado ya.');
       title.textContent = action === 'confirm' ? 'Solicitud aceptada' : 'Solicitud rechazada';
       message.textContent = action === 'confirm'
         ? 'La reserva ha quedado confirmada y se ha enviado el aviso correspondiente.'
