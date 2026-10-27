@@ -63,3 +63,5 @@ No despliegues `process-email-queue` desde este repositorio para sustituir el tr
 La revisión del 27-10-2026 confirmó que la expiración de solicitudes, el trabajador de correo y los recordatorios tienen cron activo. También existen las funciones de limpieza de reservas, caducidad de espacios y creación de encuestas, pero esos tres trabajos no aparecían programados.
 
 Después de revisar la migración, ejecuta una sola vez `supabase/CIERRE-AUTOMATIZACIONES-2026-10-27.sql` en Supabase SQL Editor. La migración programa la limpieza diaria, la caducidad diaria de espacios y la preparación diaria de encuestas, sin sustituir los tres trabajos existentes.
+
+La función desplegada `booking-action`, usada por `decidir-reserva.html` para consumir enlaces de confirmación/rechazo, tampoco está versionada en este repositorio. No la sustituyas ni cambies el flujo de los enlaces hasta exportar su código actual desde Supabase y añadirlo al repositorio. La página usa deliberadamente el endpoint desplegado para no llamar directamente a un RPC cuyo permiso anónimo no está confirmado.
