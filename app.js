@@ -382,7 +382,79 @@ async function getPrivateDestination(client){
   return profile.role==='admin' ? 'admin.html' : 'area-privada.html';
 }
 
-async function initPrivateLogin(){const form=document.querySelector('#loginForm');if(!form)return;const msg=document.querySelector('#loginMessage');if(!SUPABASE_ANON_KEY){msg.textContent='Falta la clave pública de Supabase en la configuración.';return;}if(!window.supabase){msg.textContent='No se ha podido cargar la conexión con Supabase. Recarga la página.';return;}const client=await getClient();if(!client){msg.textContent='No se ha podido inicializar la conexión con Supabase.';return;}try{const {data:{session},error:sessionError}=await client.auth.getSession();if(sessionError)throw sessionError;if(session){location.href=await getPrivateDestination(client);return;}}catch(error){console.error('Error comprobando la sesión:',error);msg.textContent='No se ha podido comprobar la conexión con Supabase.';return;}form.addEventListener('submit',async e=>{e.preventDefault();msg.textContent='Accediendo…';const email=document.querySelector('#loginEmail').value.trim(),password=document.querySelector('#loginPassword').value;const {error}=await client.auth.signInWithPassword({email,password});if(error){console.error('Error de acceso:',error);msg.textContent='No se ha podido iniciar sesión. Comprueba el correo y la contraseña.';return;}try{location.href=await getPrivateDestination(client);}catch(error){console.error('Error obteniendo el destino del usuario:',error);await client.auth.signOut();msg.textContent='No se ha podido identificar el tipo de usuario. Vuelve a intentarlo.';}});}
+async function initPrivateLogin(){
+  const form=document.querySelector('#loginForm');
+  if(!form)return;
+  const msg=document.querySelector('#loginMessage');
+  if(!SUPABASE_ANON_KEY){msg.textContent='Falta la clave pública de Supabase en la configuración.';msg.classList.add('error');return;}
+  if(!window.supabase){msg.textContent='No se ha podido cargar la conexión con Supabase. Recarga la página.';msg.classList.add('error');return;}
+  const client=await getClient();
+  if(!client){msg.textContent='No se ha podido inicializar la conexión con Supabase.';msg.classList.add('error');return;}
+
+  try{
+    const {data:{session},error:sessionError}=await client.auth.getSession();
+    if(sessionError)throw sessionError;
+    if(session){location.href=await getPrivateDestination(client);return;}
+  }catch(error){
+    console.error('Error comprobando la sesión:',error);
+    msg.textContent='No se ha podido comprobar la conexión con Supabase.';
+    msg.classList.add('error');
+    return;
+  }
+
+  const captcha=window.MIESPACIO_TURNSTILE;
+  let captchaToken='',widgetId=null;
+  if(!captcha){
+    msg.textContent='No se ha podido cargar la verificación de seguridad. Recarga la página.';
+    msg.classList.add('error');
+    return;
+  }
+  try{
+    widgetId=await captcha.render(document.querySelector('#loginTurnstile'),token=>{captchaToken=token;});
+  }catch(error){
+    console.error('Error cargando Turnstile:',error);
+    msg.textContent='No se ha podido cargar la verificación de seguridad. Comprueba tu conexión e inténtalo de nuevo.';
+    msg.classList.add('error');
+    return;
+  }
+
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    msg.classList.remove('error');
+    if(!captchaToken){
+      msg.textContent='Completa la verificación de seguridad antes de acceder.';
+      msg.classList.add('error');
+      return;
+    }
+    const tokenForRequest=captchaToken;
+    captchaToken='';
+    msg.textContent='Accediendo…';
+    const email=document.querySelector('#loginEmail').value.trim();
+    const password=document.querySelector('#loginPassword').value;
+    let error=null;
+    try{
+      const result=await client.auth.signInWithPassword({email,password,options:{captchaToken:tokenForRequest}});
+      error=result.error;
+    }catch(requestError){
+      error=requestError;
+    }
+    captcha.reset(widgetId,token=>{captchaToken=token;});
+    if(error){
+      console.error('Error de acceso:',error);
+      msg.textContent=/captcha/i.test(String(error.message||''))?'No se ha podido verificar la solicitud. Espera a que la verificación se renueve e inténtalo de nuevo.':'No se ha podido iniciar sesión. Comprueba el correo y la contraseña.';
+      msg.classList.add('error');
+      return;
+    }
+    try{
+      location.href=await getPrivateDestination(client);
+    }catch(error){
+      console.error('Error obteniendo el destino del usuario:',error);
+      await client.auth.signOut();
+      msg.textContent='No se ha podido identificar el tipo de usuario. Vuelve a intentarlo.';
+      msg.classList.add('error');
+    }
+  });
+}
 
 function initCompactPublicUI(){
   const header=document.querySelector('.site-header .container.nav');
