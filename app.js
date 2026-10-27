@@ -77,13 +77,26 @@ async function geocodeSpace(s){
   try{const cached=sessionStorage.getItem(key);if(cached){const c=JSON.parse(cached);return {...s,latitude:Number(c.lat),longitude:Number(c.lon)};}}catch(_){ }
   try{const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=es&q='+encodeURIComponent(address);const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)return s;const data=await r.json();if(!data.length)return s;const result={lat:data[0].lat,lon:data[0].lon};try{sessionStorage.setItem(key,JSON.stringify(result));}catch(_){ }return {...s,latitude:Number(result.lat),longitude:Number(result.lon)};}catch(error){console.warn('No se pudo geolocalizar',address,error);return s;}
 }
+function mapDirectionsMarkup(s,lat,lon){
+  const validCoords=lat!==null&&lat!==''&&lon!==null&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon));
+  const destination=validCoords?`${Number(lat)},${Number(lon)}`:[s.address,s.city,s.province,'España'].filter(Boolean).join(', ');
+  const query=encodeURIComponent(destination);
+  const googleUrl=`https://www.google.com/maps/dir/?api=1&destination=${query}`;
+  const appleUrl=`https://maps.apple.com/?daddr=${query}&dirflg=d`;
+  return `<div class="map-popup-actions"><span class="map-popup-label">Cómo llegar</span><div class="map-popup-links"><a class="map-route-link map-route-google" href="${googleUrl}" target="_blank" rel="noopener noreferrer">Google Maps <span aria-hidden="true">↗</span></a><a class="map-route-link map-route-apple" href="${appleUrl}" target="_blank" rel="noopener noreferrer">Mapas de Apple <span aria-hidden="true">↗</span></a></div></div>`;
+}
 async function initMap(id,spaces,single=false){
   const el=document.getElementById(id);if(!el||!window.L)return;el.innerHTML='<div class="map-loading">Cargando ubicación…</div>';
   const resolved=[];for(const s of spaces)resolved.push(await geocodeSpace(s));
-  const points=resolved.filter(s=>Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)));
+  const points=resolved.filter(s=>s.latitude!==null&&s.latitude!==''&&s.longitude!==null&&s.longitude!==''&&Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)));
   if(!points.length){el.innerHTML='<div class="map-empty">La ubicación exacta todavía no está configurada. El administrador puede introducir la dirección y localizar el espacio desde su área privada.</div>';return;}
   const map=L.map(el,{scrollWheelZoom:false});L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const bounds=[];
-  points.forEach(s=>{const p=[Number(s.latitude),Number(s.longitude)];bounds.push(p);L.marker(p).addTo(map).bindPopup(`<strong>${esc(s.name)}</strong><br>${esc(s.city)}${single?'':' · '+esc(s.province)}${single?'':'<br><a href="espacio.html?id='+encodeURIComponent(s.id)+'">Ver espacio</a>'}`);});
+  points.forEach(s=>{
+    const lat=Number(s.latitude),lon=Number(s.longitude),p=[lat,lon];bounds.push(p);
+    const viewLink=single?'':`<a class="map-popup-view" href="espacio.html?id=${encodeURIComponent(s.id)}">Ver espacio</a>`;
+    const routeLinks=mapDirectionsMarkup(s,lat,lon);
+    L.marker(p).addTo(map).bindPopup(`<div class="map-popup"><strong class="map-popup-title">${esc(s.name)}</strong><span class="map-popup-location">${esc(s.city)}${single?'':' · '+esc(s.province)}</span>${viewLink}${routeLinks}</div>`);
+  });
   if(single)map.setView(bounds[0],17);else map.fitBounds(bounds,{padding:[35,35],maxZoom:16});setTimeout(()=>map.invalidateSize(),150);
 }
 
