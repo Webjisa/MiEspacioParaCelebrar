@@ -66,7 +66,7 @@ async function getPublicSpaces(){
 }
 function normalizeSpace(s){
   const images=(s.space_images||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(x=>x.image_url).filter(Boolean);
-  return {id:s.id,name:s.name,city:s.city,province:s.province,address:s.address||'',latitude:s.latitude,longitude:s.longitude,image:images[0]||FALLBACK_SPACES[0].image,gallery:images.slice(1),description:s.description||'',priceWeekday:s.weekday_price,priceTuesday:s.tuesday_price,priceWednesday:s.wednesday_price,priceThursday:s.thursday_price,priceFriday:s.friday_price,priceSaturday:s.saturday_price,priceSunday:s.sunday_price,dayPrices:s.day_prices||{},holidayPrice:Number(s.holiday_price||0),holidayEvePrice:Number(s.holiday_eve_price||0),holidays:s.holidays||{},deposit:s.deposit,hours:formatHours(s.opening_time,s.closing_time),features:[...(s.space_features||[]).map(x=>x.feature)].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'es',{sensitivity:'base'})),services:[...(s.space_services||[])].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{sensitivity:'base'})),cleaningAvailable:!!s.cleaning_available,cleaningPrice:s.cleaning_price||0,cancellationPolicy:s.cancellation_policy||'',conditions:s.conditions_text||s.cancellation_policy||'',active:s.active,adminEnabled:s.admin_enabled!==false,ownerActive:s.owner_active!==false,activeFrom:s.active_from,activeUntil:s.active_until};
+  return {id:s.id,name:s.name,city:s.city,province:s.province,address:s.address||'',latitude:s.latitude,longitude:s.longitude,image:images[0]||'',gallery:images.slice(1),description:s.description||'',priceWeekday:s.weekday_price,priceTuesday:s.tuesday_price,priceWednesday:s.wednesday_price,priceThursday:s.thursday_price,priceFriday:s.friday_price,priceSaturday:s.saturday_price,priceSunday:s.sunday_price,dayPrices:s.day_prices||{},holidayPrice:Number(s.holiday_price||0),holidayEvePrice:Number(s.holiday_eve_price||0),holidays:s.holidays||{},deposit:s.deposit,hours:formatHours(s.opening_time,s.closing_time),features:[...(s.space_features||[]).map(x=>x.feature)].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'es',{sensitivity:'base'})),services:[...(s.space_services||[])].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{sensitivity:'base'})),cleaningAvailable:!!s.cleaning_available,cleaningPrice:s.cleaning_price||0,cancellationPolicy:s.cancellation_policy||'',conditions:s.conditions_text||s.cancellation_policy||'',active:s.active,adminEnabled:s.admin_enabled!==false,ownerActive:s.owner_active!==false,activeFrom:s.active_from,activeUntil:s.active_until};
 }
 function formatHours(open,close){return open&&close?`${String(open).slice(0,5)}–${String(close).slice(0,5)}`:'Consultar horario';}
 function footer(){return `<footer><div class="container footer-inner"><div class="footer-brand-block"><div class="footer-brand"><img class="footer-logo" src="assets/logo-miespacio-principal.png" alt="MiEspacio Para Celebrar"><strong>MiEspacioParaCelebrar</strong></div><p>Admin: <a href="mailto:${ADMIN_EMAIL}">${ADMIN_EMAIL}</a></p></div></div></footer>`;}
@@ -93,7 +93,7 @@ function calculateBookingPrice(s,start,end){if(!start||!end||end<start)return nu
 function localISODate(date=new Date()){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
 function priceRange(s){const values=Object.values(s.dayPrices||{}).map(Number).filter(Number.isFinite);if(values.length){const min=Math.min(...values),max=Math.max(...values);if(min===0&&max===0&&s.services?.some(x=>x.replaces_rental&&!x.included))return 'Según paquete';return min===max?euro(min):`${euro(min)} – ${euro(max)}`;}const legacy=[s.priceWeekday,s.priceTuesday,s.priceWednesday,s.priceThursday,s.priceFriday,s.priceSaturday,s.priceSunday].map(Number).filter(Number.isFinite);if(!legacy.length)return 'Consultar';const min=Math.min(...legacy),max=Math.max(...legacy);return min===max?euro(min):`${euro(min)} – ${euro(max)}`;}
 
-async function renderSpaces(){const grid=document.querySelector('#spacesGrid');if(!grid)return;const spaces=await getPublicSpaces();window.__publicSpaces=spaces;grid.innerHTML=spaces.length?spaces.map(s=>`<a class="space-tile" href="espacio.html?id=${encodeURIComponent(s.id)}"><div class="space-tile-photo"><img loading="lazy" decoding="async" src="${esc(s.image)}" alt="${esc(s.name)}"></div><div class="space-tile-info"><h2>${esc(s.name)}</h2><p>${esc(s.city)} · ${esc(s.province)}</p><div class="space-tile-price">${esc(priceRange(s))}</div></div></a>`).join(''):'<p class="muted">No hay espacios disponibles en este momento.</p>';}
+async function renderSpaces(){const grid=document.querySelector('#spacesGrid');if(!grid)return;const spaces=await getPublicSpaces();window.__publicSpaces=spaces;grid.innerHTML=spaces.length?spaces.map(s=>`<a class="space-tile" href="espacio.html?id=${encodeURIComponent(s.id)}"><div class="space-tile-photo">${s.image?`<img loading="lazy" decoding="async" src="${esc(s.image)}" alt="${esc(s.name)}">`:'<div class="space-photo-placeholder"><span>Sin fotografías</span></div>'}</div><div class="space-tile-info"><h2>${esc(s.name)}</h2><p>${esc(s.city)} · ${esc(s.province)}</p><div class="space-tile-price">${esc(priceRange(s))}</div></div></a>`).join(''):'<p class="muted">No hay espacios disponibles en este momento.</p>';}
 async function getSelectedSpace(){const id=new URLSearchParams(location.search).get('id');const spaces=await getPublicSpaces();return spaces.find(s=>String(s.id)===String(id));}
 
 function serviceGroupKey(value){return String(value||'').toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi,'-').replace(/^-|-$/g,'')||'servicio';}
@@ -123,9 +123,9 @@ async function renderSpaceDetail(){
   const root=document.querySelector('#spaceDetail');if(!root)return;const s=await getSelectedSpace();
   if(!s){root.innerHTML='<section class="section"><div class="container"><h1>Espacio no disponible</h1><p class="muted">Este espacio ya no está disponible públicamente.</p><a class="btn btn-dark" href="espacios.html">Ver espacios</a></div></section>';return;}
   document.title=`${s.name} · MiEspacioParaCelebrar`;
-  root.innerHTML=`<section class="space-detail-hero"><div class="space-detail-image"><img loading="eager" fetchpriority="high" decoding="async" src="${esc(s.image)}" alt="${esc(s.name)}"></div><div class="container space-detail-heading"><p class="eyebrow">${esc(s.city)} · ${esc(s.province)}</p><h1>${esc(s.name)}</h1><p>${esc(s.description)}</p></div></section>
+  root.innerHTML=`<section class="space-detail-hero"><div class="space-detail-image${s.image?'':' no-photo'}">${s.image?`<img loading="eager" fetchpriority="high" decoding="async" src="${esc(s.image)}" alt="${esc(s.name)}">`:'<div class="space-photo-placeholder space-photo-placeholder-hero"><span>Fotografía no disponible</span></div>'}</div><div class="container space-detail-heading"><p class="eyebrow">${esc(s.city)} · ${esc(s.province)}</p><h1>${esc(s.name)}</h1><p>${esc(s.description)}</p></div></section>
   <section class="section"><div class="container detail-main"><div><p class="eyebrow">EL ESPACIO</p><h2>Todo lo que necesitas para celebrar</h2><div class="feature-list feature-list-large">${s.features.map(f=>`<span>${esc(f)}</span>`).join('')}</div></div><div class="detail-summary"><div><span>Precio</span><strong>${esc(priceRange(s))}</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}<div><span>Horario</span><strong>${esc(s.hours)}</strong></div><a class="btn btn-dark full" href="#disponibilidad">Solicitar reserva</a></div></div></section>
-  <section class="gallery-section"><div class="container gallery">${[s.image,...s.gallery].map((img,i)=>`<img loading="lazy" decoding="async" class="g${i+1}" src="${esc(img)}" alt="${esc(s.name)}">`).join('')}</div></section>
+  ${[s.image,...s.gallery].filter(Boolean).length?`<section class="gallery-section"><div class="container gallery">${[s.image,...s.gallery].filter(Boolean).map((img,i)=>`<img loading="lazy" decoding="async" class="g${i+1}" src="${esc(img)}" alt="${esc(s.name)}">`).join('')}</div></section>`:''}
   ${s.services?.filter(x=>!x.included&&x.selection_group==='paquete').length?`<section class="section"><div class="container"><p class="eyebrow">PAQUETES Y OPCIONES</p><h2>Elige la opción que necesitas</h2><div class="package-grid">${s.services.filter(x=>!x.included&&x.selection_group==='paquete').map(x=>`<article class="package-card"><h3>${esc(x.name)}</h3><strong>${euro(x.price)}${x.price_mode==='per_day'?' / día':''}</strong>${x.allowed_days?.length?`<p class="micro">Disponible según los días configurados.</p>`:''}${x.description?`<p>${esc(x.description)}</p>`:''}</article>`).join('')}</div></div></section>`:''}
   <section class="section soft"><div class="container details-grid"><div><p class="eyebrow">PRECIOS Y CONDICIONES</p><h2>Lo que debes saber antes de solicitar</h2></div><div class="rule-card"><div><span>Precio</span><strong>${esc(priceRange(s))}${priceRange(s)==='Según paquete'?'':' según el día'}</strong></div>${s.deposit!=null?`<div><span>Fianza</span><strong>${euro(s.deposit)}</strong></div>`:''}${s.cleaningAvailable?`<div><span>Limpieza</span><strong>${euro(s.cleaningPrice)} · opcional</strong></div>`:''}<div><span>Reserva</span><strong>Solicitud previa, no confirmación automática</strong></div><div><span>Retención</span><strong>Las fechas se mantienen 72 horas</strong></div></div></div></section>
   <section class="section map-section"><div class="container"><div class="section-head"><div><p class="eyebrow">UBICACIÓN</p><h2>Cómo llegar</h2></div><p class="muted">Ubicación del espacio.</p></div><div id="spaceMap" class="map"></div></div></section>
@@ -396,9 +396,8 @@ function initCompactPublicUI(){
       let links=[...nav.querySelectorAll('a')];
       if(isAdminPage){
         links.forEach(a=>{a.hidden=!/área\s+privada/i.test(a.textContent||'');});
-      }else if(isOwnerPage){
-        links.forEach(a=>{a.hidden=!/(administración|cerrar\s+sesión)/i.test(a.textContent||'');});
       }else{
+        links.forEach(a=>{a.hidden=false;});
         const hasDate=links.some(a=>/consulta\s+tu\s+fecha/i.test(a.textContent||''));
         if(!hasDate){
           const a=document.createElement('a');
@@ -406,8 +405,21 @@ function initCompactPublicUI(){
           a.textContent='Consulta tu fecha';
           const privateLink=links.find(x=>/área\s+privada/i.test(x.textContent||''));
           if(privateLink) nav.insertBefore(a,privateLink); else nav.appendChild(a);
-          links=[...nav.querySelectorAll('a')];
         }
+        if(isOwnerPage&&!links.some(a=>/área\s+privada/i.test(a.textContent||''))){
+          const a=document.createElement('a');
+          a.href='area-privada.html';
+          a.textContent='Área privada';
+          nav.appendChild(a);
+        }
+        links=[...nav.querySelectorAll('a')];
+        const currentFile=path.split('/').pop()||'index.html';
+        links.forEach(a=>{
+          const href=String(a.getAttribute('href')||'').split(/[?#]/)[0].split('/').pop().toLowerCase();
+          const active=href===currentFile||(currentFile==='espacio.html'&&href==='espacios.html');
+          a.classList.toggle('active',active);
+          if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+        });
       }
       let toggle=header.querySelector('.mobile-menu-toggle');
       if(!toggle){
