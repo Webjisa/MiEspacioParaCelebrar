@@ -3,7 +3,7 @@ const SUPABASE_URL = 'https://hvuseljtqdgekotrsiwd.supabase.co';
 const SUPABASE_ANON_KEY = window.MIESPACIO_SUPABASE_ANON_KEY || '';
 const ADMIN_EMAIL = 'miespacioparacelebrar@gmail.com';
 
-const LA_NUBE_ID = '340c371d-e09b-4a59-bfaa-343d7509a35c';
+const LA_NUBE_ID = '4e8065b1-876e-46b3-9d60-53bf660975a9';
 
 // Fallback de emergencia únicamente para La Nube. El ID es el UUID real de Supabase.
 // Nunca se debe usar un identificador de prueba como "la-nube" para crear reservas.
