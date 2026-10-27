@@ -27,32 +27,30 @@
  const {data:{session}}=await c.auth.getSession();
  let captchaToken='',widgetId=null;
  if(session){req.style.display='none';pass.style.display='block';}
- else{
+ else if(window.MIESPACIO_TURNSTILE){
    try{
      widgetId=await window.MIESPACIO_TURNSTILE.render(document.querySelector('#resetTurnstile'),token=>{captchaToken=token;});
    }catch(error){
+     // La validación obligatoria la aplica Supabase cuando CAPTCHA esté activado.
      console.error('Error cargando Turnstile:',error);
-     reqMsg.textContent='No se ha podido cargar la verificación de seguridad. Comprueba tu conexión e inténtalo de nuevo.';
-     reqMsg.classList.add('error');
    }
  }
  req.addEventListener('submit',async e=>{
    e.preventDefault();
    const msg=document.querySelector('#requestMessage');
    msg.classList.remove('error');
-   if(!captchaToken){msg.textContent='Completa la verificación de seguridad antes de solicitar el enlace.';msg.classList.add('error');return;}
+   if(widgetId!==null&&!captchaToken){msg.textContent='Completa la verificación de seguridad antes de solicitar el enlace.';msg.classList.add('error');return;}
    const tokenForRequest=captchaToken;
    captchaToken='';
    msg.textContent='Enviando…';
    let error=null;
    try{
-     const result=await c.auth.resetPasswordForEmail(document.querySelector('#email').value.trim(),{
-       redirectTo:'https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html',
-       captchaToken:tokenForRequest
-     });
+     const options={redirectTo:'https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html'};
+     if(tokenForRequest)options.captchaToken=tokenForRequest;
+     const result=await c.auth.resetPasswordForEmail(document.querySelector('#email').value.trim(),options);
      error=result.error;
    }catch(requestError){error=requestError;}
-   window.MIESPACIO_TURNSTILE.reset(widgetId,token=>{captchaToken=token;});
+   if(window.MIESPACIO_TURNSTILE&&widgetId!==null)window.MIESPACIO_TURNSTILE.reset(widgetId,token=>{captchaToken=token;});
    if(error){
      console.error('Error solicitando la recuperación:',error);
      msg.textContent=/captcha/i.test(String(error.message||''))?'No se ha podido verificar la solicitud. Espera a que la verificación se renueve e inténtalo de nuevo.':'No se ha podido enviar el enlace. Comprueba el email e inténtalo de nuevo.';
