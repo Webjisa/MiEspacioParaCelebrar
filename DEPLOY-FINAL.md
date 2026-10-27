@@ -80,7 +80,7 @@ Antes de desplegar cualquier función, confirma que el código versionado coinci
 
 La configuración verificada de producción utiliza el cron de Supabase `email-worker-every-minute`, activo cada minuto, que llama a `/functions/v1/email-worker`. La función envía la cola mediante Brevo.
 
-El archivo `.github/workflows/email-worker.yml` también contiene una ejecución programada diaria. Esa ejecución adicional no sustituye al cron de Supabase y conviene revisarla al sincronizar la función. No cambies ni detengas el cron activo como parte de una revisión documental.
+El archivo `.github/workflows/email-worker.yml` queda disponible solo mediante ejecución manual como alternativa de diagnóstico. El procesamiento automático de producción lo realiza el cron de Supabase cada minuto; no hay una segunda ejecución programada desde GitHub.
 
 La aplicación introduce las comunicaciones en `email_queue`; no hace falta crear un correo manual para cada reserva.
 
