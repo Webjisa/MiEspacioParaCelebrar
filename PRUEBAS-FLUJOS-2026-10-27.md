@@ -2,7 +2,7 @@
 
 ## Resultado general
 
-Se ha sincronizado el código de las dos Edge Functions de producción con GitHub y se han realizado comprobaciones estáticas de integración. No se han ejecutado nuevas migraciones SQL ni se han creado reservas nuevas durante esta revisión.
+Se ha sincronizado el código de las dos Edge Functions de producción con GitHub y se ha revisado el recorrido de reserva. Se aplicaron dos migraciones SQL correctivas en producción y se actualizaron el SQL consolidado y los recursos del frontend. No se crearon reservas nuevas durante esta revisión.
 
 ## Comprobaciones superadas
 
@@ -14,6 +14,11 @@ Se ha sincronizado el código de las dos Edge Functions de producción con GitHu
 | Integración de correo | OK | `email-worker` exige POST y el encabezado secreto `x-cron-secret`, reclama lotes de `email_queue` y envía a través de Brevo. |
 | Integración de decisiones | OK | `decidir-reserva.html` envía `{token, action}` por POST a `booking-action`; el backend valida el token/acción y llama al RPC desde servidor. |
 | Formulario de reserva | OK estático | `app.js` llama a `create_booking_request` y consulta rangos no disponibles con `get_space_unavailable_ranges`. |
+| Snapshot de servicios | CORREGIDO | La función de presupuesto devuelve también `services_snapshot`; se reconstruyeron cinco snapshots históricos a partir del presupuesto guardado. Un registro antiguo sigue sin snapshot porque el dato de origen no permite reconstruirlo de forma fiable. |
+| Fechas pasadas | CORREGIDO | `get_booking_quote` rechaza fechas anteriores al día actual; se comprobó con una llamada de solo lectura, sin crear reservas. |
+| Modificación de reservas | CORREGIDO | `owner_update_booking` utiliza `get_space_price_for_date` para recalcular el alquiler, respetando precios por día, festivos y vísperas. |
+| Presupuesto en la ficha | CORREGIDO | `app.js` carga `holiday_eve_price` y aplica esa tarifa cuando la fecha siguiente figura como festivo. |
+| Fallo al consultar disponibilidad | CORREGIDO ESTÁTICO | Si falla `get_space_unavailable_ranges`, la ficha no permite enviar la solicitud y la búsqueda general no ofrece resultados como si todas las fechas estuvieran libres. |
 | Emails de encuestas | OK estático | El trabajador contiene una plantilla `survey_created`; el cron diario de encuestas figura activo en Supabase. |
 | Caducidad de solicitudes | OK en producción | La prueba anterior de caducidad acabó con la solicitud en estado `expired` y los avisos `customer_expired` y `admin_booking_final` enviados. |
 | Cola de emails | OK en producción | En la última comprobación, los 21 elementos estaban en estado `sent`; no había elementos pendientes o fallidos. |
