@@ -53,41 +53,36 @@ En Administración → Servicios:
 
 La reserva guarda el nombre y precio del servicio en un snapshot. Un cambio posterior no altera una solicitud ya creada.
 
-### 5. Configurar el correo transaccional
+### 5. Configurar el correo transaccional — estado verificado el 27-10-2026
 
-La clave de Resend **no debe aparecer nunca en GitHub**.
+En el proyecto Supabase activo se comprobó que:
 
-Configura estos secretos en Supabase Edge Functions:
+- El cron `email-worker-every-minute` llama a la Edge Function `email-worker` cada minuto.
+- La función activa envía mediante la API de Brevo.
+- La caducidad de una solicitud y las dos notificaciones asociadas funcionaron en una prueba real.
 
-- `RESEND_API_KEY` → API key de Resend.
-- `SUPABASE_SERVICE_ROLE_KEY` → service role key del proyecto Supabase.
-- `SUPABASE_URL` → URL del proyecto.
-- `ADMIN_EMAIL` → `miespacioparacelebrar@gmail.com`.
-- `FROM_EMAIL` → una dirección autorizada/verificada en Resend.
-- `SITE_URL` → `https://webjisa.github.io/MiEspacioParaCelebrar/`
+**Importante: el código desplegado y el código versionado no están sincronizados.** En este repositorio no existe `supabase/functions/email-worker/index.ts`; sí existe `supabase/functions/process-email-queue/index.ts`, que implementa la integración antigua con Resend. No despliegues esta función antigua para sustituir el trabajador de producción.
 
-Para producción, `FROM_EMAIL` debe pertenecer a un dominio que Resend permita utilizar. No introduzcas la service role key en `supabase-config.js` ni en ningún JavaScript público.
+Para recuperar despliegues reproducibles, copia primero el código de la función activa desde Supabase a `supabase/functions/email-worker/index.ts`, revisa que sus variables de entorno coincidan con las que utiliza el código y vuelve a probarla. Nunca copies claves API, tokens o secretos al repositorio.
 
-### 6. Publicar las Edge Functions
+### 6. Publicación de Edge Functions
 
-Con Supabase CLI autenticado y vinculado al proyecto:
+Funciones que aparecen en el repositorio:
 
-```bash
-supabase functions deploy create-owner
-supabase functions deploy process-email-queue
-supabase functions deploy expire-bookings
-supabase functions deploy send-survey
-```
+- `create-owner`
+- `process-email-queue` — implementación heredada de Resend; **no desplegar sobre el sistema activo** hasta sincronizarla.
+- `expire-bookings`
+- `send-survey`
 
-Después configura los secretos de las funciones y vuelve a desplegarlas si es necesario.
+Antes de desplegar cualquier función, confirma que el código versionado coincide con el que se está utilizando en producción. La función `email-worker` que está activa actualmente debe incorporarse primero al repositorio. No hace falta modificar los cron que ya están funcionando para realizar esa sincronización.
 
 ### 7. Procesador de emails
 
-`process-email-queue` es el procesador central.
+La configuración verificada de producción utiliza el cron de Supabase `email-worker-every-minute`, activo cada minuto, que llama a `/functions/v1/email-worker`. La función envía la cola mediante Brevo.
 
-Debe ejecutarse periódicamente. Si el proyecto tiene `pg_cron`, la SQL definitiva deja preparadas las tareas de expiración, limpieza y recordatorios. El procesador de la cola debe ejecutarse aproximadamente cada minuto o cada pocos minutos mediante el mecanismo de programación que utilices en Supabase.
+El archivo `.github/workflows/email-worker.yml` también contiene una ejecución programada diaria. Esa ejecución adicional no sustituye al cron de Supabase y conviene revisarla al sincronizar la función. No cambies ni detengas el cron activo como parte de una revisión documental.
 
-No hace falta crear un email manual para cada reserva: la aplicación introduce las comunicaciones en `email_queue` y la función las envía.
+La aplicación introduce las comunicaciones en `email_queue`; no hace falta crear un correo manual para cada reserva.
 
 ### 8. Expiración y limpieza
 
@@ -216,7 +211,7 @@ Después de superar las pruebas:
 ## Archivos importantes
 
 - `supabase/FINAL-2026.sql` → SQL definitiva.
-- `supabase/functions/process-email-queue/index.ts` → envío transaccional.
+- `supabase/functions/process-email-queue/index.ts` → implementación heredada de Resend; no equivale al trabajador activo `email-worker` de Brevo.
 - `supabase/functions/create-owner/index.ts` → alta segura de propietarios.
 - `supabase/functions/expire-bookings/index.ts` → expiración.
 - `supabase/functions/send-survey/index.ts` → encuestas.
@@ -229,7 +224,7 @@ Después de superar las pruebas:
 Nunca subas al repositorio:
 
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `RESEND_API_KEY`
+- Claves API del proveedor de correo activo (no deben almacenarse en GitHub).
 - contraseñas de propietarios
 - tokens de encuesta
 - datos reales de clientes
