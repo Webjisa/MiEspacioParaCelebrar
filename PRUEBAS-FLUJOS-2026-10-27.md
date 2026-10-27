@@ -50,3 +50,33 @@ No se han usado reservas ni datos personales de clientes reales para estas compr
 ## Publicación
 
 El código del sitio y de las Edge Functions está en GitHub. La validación de GitHub Pages debe considerarse finalizada cuando el workflow de publicación asociado al último commit de esta revisión termine en estado `success`.
+
+
+## Revisión ampliada de seguridad y pruebas transaccionales — 27-10-2026
+
+### Cambios aplicados
+
+- Migración `20261027154213_harden_public_price_rpc_and_function_paths`: fija `search_path` de `set_updated_at` y `normalize_locality` a `pg_catalog`; elimina lectura directa de `public.local_holidays` para `anon` y `authenticated` (la web mantiene la consulta pública por RPC); endurece `get_space_price_for_date` con `search_path` vacío y validación de que el espacio esté publicado, activo y dentro de su periodo.
+- Migración `20261027154334_restrict_legacy_public_rpc_execute`: retira `EXECUTE` a `PUBLIC`, `anon` y `authenticated` para cuatro RPC heredadas no llamadas por el frontend actual: `check_space_availability`, `get_booking_pricing`, `get_public_space_special_dates` y `get_space_price_for_date`. `get_booking_quote` conserva el cálculo por función propietaria y se verificó desde el rol público.
+- El SDK de Supabase se ha fijado a la versión estable `2.118.0` en las diez páginas HTML que lo cargan. Referencia oficial: https://github.com/supabase/supabase-js/releases
+- No se han concedido permisos de creación de objetos en el esquema `public` a `anon` ni a `authenticated`. La tabla `owner_booking_action_tokens` permanece inaccesible para esos roles; el flujo de decisión usa la función de servidor protegida.
+- Se mantiene `pg_net` sin mover de esquema, porque el cron activo de correo depende de `net.http_post`. Mover la extensión sin una migración específica podría interrumpir el envío.
+
+### Pruebas de base de datos superadas
+
+- Lectura pública bajo el rol `anon`: `La Nube` devuelve siete fotografías registradas y `Bajo casa` devuelve cero, sin reutilizar imágenes de otro espacio.
+- Consulta pública de festivos: el RPC devuelve 16 fechas para La Nube en 2026, sin conceder acceso directo a `local_holidays`.
+- Presupuesto real de La Nube para el 28-10-2026, sin servicios ni limpieza: alquiler 120 €, fianza 50 €, total 170 €. Seleccionando el servicio opcional de monitor de 20 €, el total pasa a 190 €. Marcando limpieza, el cálculo actual añade 60 € y devuelve 230 € (sin el servicio opcional). Las cantidades se han obtenido de `get_booking_quote`; no se ha creado una reserva con estos cálculos.
+- Presupuesto de dos días (28–29-10-2026), sin extras: alquiler 240 €, fianza 50 €, total 290 €.
+- Validación de fechas pasadas: el presupuesto rechaza la fecha anterior al día actual con el error esperado.
+- Prueba transaccional de reserva: se crearon dos solicitudes QA dentro de una transacción, se confirmó una y se rechazó la otra como el propietario autorizado simulado. Las notificaciones esperadas se insertaron temporalmente en la cola. La transacción se revirtió íntegramente; la consulta posterior confirmó cero reservas QA y cero correos QA persistentes. No se enviaron correos reales.
+- Pruebas negativas de autorización: el acceso de un usuario no propietario a la configuración de festivos se rechazó, y un usuario no administrador no pudo leer datos de invitación de propietario.
+- Auditoría estática de enlaces: las 19 páginas HTML del repositorio no tienen referencias locales rotas en sus atributos `href` y `src`, ni rutas locales absolutas que rompan el prefijo de GitHub Pages. La hoja `styles.css` no contiene referencias a archivos locales inexistentes.
+- GitHub Pages: el workflow del commit `39b57cc0` terminó en `success`.
+
+### Pendientes antes del cierre definitivo
+
+- **Configuración de Auth:** el asesor de Supabase sigue indicando que la protección contra contraseñas filtradas está desactivada. Debe activarse en el Dashboard: Authentication → Providers → Email → Password security → activar “Leaked password protection”. Supabase indica que esta función está disponible en los planes Pro y superiores: https://supabase.com/docs/guides/auth/password-security. No se ha cambiado automáticamente porque la conexión disponible no permite editar esta configuración de Auth desde aquí. Para no bloquear accesos existentes, no se ha endurecido a ciegas la longitud/complejidad mínima de todas las contraseñas.
+- El asesor sigue mostrando avisos sobre funciones `SECURITY DEFINER` expuestas. Los RPC públicos que necesita la web permanecen accesibles y validados; los RPC de administración/propietario comprueban internamente el rol activo y la propiedad. No se revocaron en bloque porque rompería las funciones de gestión y reserva.
+- La advertencia sobre `pg_net` en el esquema `public` se mantiene pendiente de una migración independiente y de verificación del cron.
+- **No se certifica todavía la revisión visual de extremo a extremo en un navegador real.** Se han comprobado las referencias estáticas y el comportamiento de los RPC/roles en base de datos, pero no se ha podido ejecutar la web publicada con interacción gráfica, sesión real ni buzón real desde esta sesión. Siguen pendientes la revisión visual de escritorio/móvil y la comprobación con una cuenta de prueba real de activación y restablecimiento de contraseña.
