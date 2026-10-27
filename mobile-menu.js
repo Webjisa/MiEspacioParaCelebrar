@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     btn.setAttribute('aria-expanded',String(open));
     btn.setAttribute('aria-label',open?'Cerrar menú':'Abrir menú');
   });
+  btn.dataset.bound='1';
   mainNav.querySelectorAll('a').forEach(a=>a.addEventListener('click',close));
   document.addEventListener('click',e=>{if(!nav.contains(e.target))close();});
 });
