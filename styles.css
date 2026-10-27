@@ -1508,3 +1508,17 @@ body:not(.home-redesign) :focus-visible{outline:3px solid rgba(189,99,72,.62);ou
   body:not(.home-redesign) .cta-panel .btn{margin-top:18px}
   body:not(.home-redesign) .footer-inner{display:block}
 }
+
+
+/* Acciones de decisión de reserva: coherentes con el sistema de botones global. */
+body:not(.home-redesign) .decision-card{border-color:rgba(39,51,43,.09);border-radius:21px;background:#fffdfa;box-shadow:0 13px 38px rgba(50,42,31,.055)}
+body:not(.home-redesign) .decision-action{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:45px;padding:0 17px;
+  border:1px solid #172820;border-radius:13px;background:#172820;color:#fff;
+  font-family:inherit;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer;
+  transition:background .18s ease,border-color .18s ease,transform .18s ease
+}
+body:not(.home-redesign) .decision-action:hover{background:#2c4939;border-color:#2c4939;color:#fff;transform:translateY(-1px)}
+body:not(.home-redesign) .decision-action[disabled]{opacity:.6;cursor:wait;transform:none}
+body:not(.home-redesign) .decision-action + .decision-action{margin-left:8px!important;border-color:#dfd4c7;background:#fffdfa;color:#26372e}
+body:not(.home-redesign) .decision-action + .decision-action:hover{background:#f5ebe1;border-color:#d2bda9}
