@@ -6,7 +6,7 @@ Portal web para consultar espacios privados de celebración y enviar solicitudes
 
 - Frontend estático: GitHub Pages.
 - Datos, autenticación, RLS y RPC: Supabase.
-- Correo transaccional: Resend mediante Edge Functions.
+- Correo transaccional desplegado: Brevo mediante la Edge Function `email-worker`, invocada por un cron de Supabase.
 - Mapas: Leaflet/OpenStreetMap.
 - Clientes: sin cuenta.
 - Propietarios y administración: acceso privado.
@@ -48,8 +48,12 @@ Debe conservarse como la SQL consolidada de la versión final. Las SQL anteriore
 
 ## Seguridad
 
-No guardar secretos en el frontend. La service role key de Supabase y la API key de Resend se configuran exclusivamente como secretos de Edge Functions.
+No guardar secretos en el frontend ni en GitHub. La service role key de Supabase y las claves API del proveedor de correo se configuran exclusivamente como secretos de Edge Functions.
 
 ## Publicación
 
-El proyecto está preparado para GitHub Pages. No se incluye ninguna afirmación de que la versión esté ya desplegada: primero hay que sustituir el contenido del repositorio y completar la configuración de Supabase/Resend siguiendo `DEPLOY-FINAL.md`.
+El repositorio contiene la web estática para GitHub Pages. El 27-10-2026 se verificó en el proyecto Supabase activo la caducidad automática y el envío de notificaciones mediante Brevo. Queda pendiente sincronizar el código fuente del trabajador de correo: la función desplegada `email-worker` todavía no está versionada aquí y `supabase/functions/process-email-queue/index.ts` es una implementación antigua basada en Resend.
+
+## Importante: sincronización del correo pendiente
+
+No despliegues `process-email-queue` desde este repositorio para sustituir el trabajador activo. La configuración comprobada en Supabase usa `email-worker` y Brevo, pero el código fuente de esa función aún no está incluido en el repositorio. Antes de volver a desplegar o reconstruir el proyecto, exporta la función activa a `supabase/functions/email-worker/index.ts` y revisa sus secretos sin publicarlos.
