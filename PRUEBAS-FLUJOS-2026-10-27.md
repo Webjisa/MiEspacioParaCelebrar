@@ -20,14 +20,18 @@ Se ha revisado el recorrido de reserva, se han sincronizado cinco Edge Functions
 | Formulario de reserva | OK estático | `app.js` llama a `create_booking_request` y consulta rangos no disponibles con `get_space_unavailable_ranges`. |
 | Snapshot de servicios | CORREGIDO | La función de presupuesto devuelve también `services_snapshot`; se reconstruyeron cinco snapshots históricos a partir del presupuesto guardado. Un registro antiguo sigue sin snapshot porque el dato de origen no permite reconstruirlo de forma fiable. |
 | Fechas pasadas | CORREGIDO | `get_booking_quote` rechaza fechas anteriores al día actual; se comprobó con una llamada de solo lectura, sin crear reservas. |
-| Modificación de reservas | CORREGIDO | `owner_update_booking` utiliza `get_space_price_for_date` para recalcular el alquiler, respetando precios por día, festivos y vísperas. |
+| Modificación de reservas | CORREGIDO EN PRODUCCIÓN | `owner_update_booking` reutiliza ahora `get_booking_quote` y guarda el presupuesto completo junto con `services_snapshot`. |
+| Motor de precios de servicios | CORREGIDO EN PRODUCCIÓN | El backend multiplica servicios `per_day` por los días, respeta `replaces_rental`, valida `allowed_days`, dependencias y grupos obligatorios/únicos. Guarda detalle diario y precio total de cada servicio. |
 | Presupuesto en la ficha | CORREGIDO | `app.js` carga `holiday_eve_price` y aplica esa tarifa cuando la fecha siguiente figura como festivo. |
 | Fallo al consultar disponibilidad | CORREGIDO ESTÁTICO | Si falla `get_space_unavailable_ranges`, la ficha no permite enviar la solicitud y la búsqueda general no ofrece resultados como si todas las fechas estuvieran libres. |
 | Encuestas | CORREGIDO, PARCIALMENTE VALIDADO | Se calificaron con `extensions` las llamadas a `digest` y `gen_random_bytes`, y se añadió bloqueo para evitar dos envíos simultáneos del mismo token. Se validan las puntuaciones entre 1 y 5. Una llamada con token ficticio se rechazó con el error esperado. No hay encuestas ni reservas confirmadas que terminasen ayer; no se envió ningún correo de encuesta. El cron de encuestas está activo, pero todavía no hay ejecución registrada en `cron.job_run_details`. |
+| Invitaciones y acceso | OK de código y permisos | `create-owner` (versión 12) y `resend-owner-invitation` (versión 11) coinciden con sus archivos de GitHub; ambas funciones y los RPC auxiliares validan que el actor sea un administrador activo. Activación y restablecimiento de contraseña siguen pendientes de prueba con enlace real. |
 | Caducidad de solicitudes | OK en producción | La prueba anterior de caducidad acabó con la solicitud en estado `expired` y los avisos `customer_expired` y `admin_booking_final` enviados. |
 | Cola de emails | OK en cola | Los 30 elementos existentes aparecen con estado `sent`; no hay registros en otros estados. Esto refleja el estado de la cola, no garantiza por sí solo que cada proveedor de correo haya entregado el mensaje. |
 | Automatizaciones | OK en configuración | Están activos el worker de emails, la caducidad de reservas, los recordatorios y los trabajos diarios de limpieza, caducidad de espacios y encuestas. |
 | Recursos estáticos | OK tras corrección | Se actualizaron las referencias de caché en portada, acceso, listado, ficha, disponibilidad, área privada y encuesta para cargar los recursos actuales. |
+
+La prueba de solo lectura para La Nube (28/10/2026) devuelve alquiler **120 €**, servicio fijo **20 €**, fianza **50 €** y total **190 €**. No se creó una reserva para validar ese cálculo.
 
 ## Pruebas aún no certificadas como extremo a extremo
 
