@@ -726,19 +726,24 @@ grant execute on function public.cleanup_old_reservation_data() to service_role;
 -- ============================================================
 -- 17. SURVEY: TOKEN Y ENVÍO
 -- ============================================================
-create or replace function public.create_survey_for_booking(p_booking_id uuid)
-returns uuid language plpgsql security definer set search_path=public,private as $$
+CREATE OR REPLACE FUNCTION public.create_survey_for_booking(p_booking_id uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
 declare v_id uuid; v_token text; b public.bookings%rowtype; s public.spaces%rowtype;
 begin
-  select * into b from public.bookings where id=p_booking_id and booking_status='confirmed';
+  select * into b from public.bookings where id=p_booking_id and booking_status='confirmed' for update;
   if not found or b.end_date<>current_date-1 then return null; end if;
-  if exists(select 1 from public.surveys where booking_id=p_booking_id) then return (select id from public.surveys where booking_id=p_booking_id); end if;
+  select id into v_id from public.surveys where booking_id=p_booking_id;
+  if found then return v_id; end if;
   select * into s from public.spaces where id=b.space_id;
-  v_token:=encode(gen_random_bytes(24),'hex');
-  insert into public.surveys(booking_id,token_hash) values(b.id,encode(digest(v_token,'sha256'),'hex')) returning id into v_id;
+  v_token:=encode(extensions.gen_random_bytes(24),'hex');
+  insert into public.surveys(booking_id,token_hash) values(b.id,encode(extensions.digest(v_token,'sha256'),'hex')) returning id into v_id;
   perform public.final_queue_email('encuestas','survey_created',b.customer_email,b.customer_name,jsonb_build_object('survey_id',v_id,'token',v_token,'space_name',s.name,'end_date',b.end_date),b.id,b.space_id);
   return v_id;
-end; $$;
+end; $function$;
 revoke all on function public.create_survey_for_booking(uuid) from public,anon,authenticated;
 grant execute on function public.create_survey_for_booking(uuid) to service_role;
 
@@ -863,19 +868,29 @@ revoke all on function public.get_owner_bookings() from public,anon; grant execu
 -- ============================================================
 -- 21. ENCUESTA: ENLACE DE UN SOLO USO
 -- ============================================================
-create or replace function public.submit_survey(
- p_token text,p_overall integer,p_facilities integer default null,p_cleaning integer default null,p_equipment integer default null,p_maintenance integer default null,
- p_improvements text default null,p_breakdown boolean default false,p_breakdown_details text default null,p_missing_items text default null,p_would_use_again boolean default null,p_comments text default null
-) returns void language plpgsql security definer set search_path=public,private as $$
+CREATE OR REPLACE FUNCTION public.submit_survey(p_token text, p_overall integer, p_facilities integer DEFAULT NULL::integer, p_cleaning integer DEFAULT NULL::integer, p_equipment integer DEFAULT NULL::integer, p_maintenance integer DEFAULT NULL::integer, p_improvements text DEFAULT NULL::text, p_breakdown boolean DEFAULT false, p_breakdown_details text DEFAULT NULL::text, p_missing_items text DEFAULT NULL::text, p_would_use_again boolean DEFAULT NULL::boolean, p_comments text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
 declare v_id uuid;
 begin
   if nullif(btrim(coalesce(p_token,'')),'') is null then raise exception 'Enlace no válido'; end if;
-  select id into v_id from public.surveys where token_hash=encode(digest(p_token,'sha256'),'hex') and completed_at is null;
+  if p_overall is null or p_overall < 1 or p_overall > 5 then raise exception 'La valoración general debe estar entre 1 y 5'; end if;
+  if (p_facilities is not null and (p_facilities < 1 or p_facilities > 5))
+     or (p_cleaning is not null and (p_cleaning < 1 or p_cleaning > 5))
+     or (p_equipment is not null and (p_equipment < 1 or p_equipment > 5))
+     or (p_maintenance is not null and (p_maintenance < 1 or p_maintenance > 5)) then
+    raise exception 'Las valoraciones deben estar entre 1 y 5';
+  end if;
+  select id into v_id from public.surveys where token_hash=encode(extensions.digest(p_token,'sha256'),'hex') and completed_at is null for update;
   if not found then raise exception 'La encuesta ya ha sido completada o el enlace no es válido'; end if;
   update public.surveys set overall=p_overall,facilities=p_facilities,cleaning=p_cleaning,equipment=p_equipment,maintenance=p_maintenance,
     improvements=nullif(btrim(p_improvements),''),breakdown=coalesce(p_breakdown,false),breakdown_details=nullif(btrim(p_breakdown_details),''),
-    missing_items=nullif(btrim(p_missing_items),''),would_use_again=p_would_use_again,comments=nullif(btrim(p_comments),''),completed_at=now() where id=v_id;
-end; $$;
+    missing_items=nullif(btrim(p_missing_items),''),would_use_again=p_would_use_again,comments=nullif(btrim(p_comments),''),completed_at=now() where id=v_id and completed_at is null;
+  if not found then raise exception 'La encuesta ya ha sido completada o el enlace no es válido'; end if;
+end; $function$;
 revoke all on function public.submit_survey(text,integer,integer,integer,integer,integer,text,boolean,text,text,boolean,text) from public,anon,authenticated;
 grant execute on function public.submit_survey(text,integer,integer,integer,integer,integer,text,boolean,text,text,boolean,text) to anon;
 
