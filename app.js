@@ -205,9 +205,11 @@ function renderBookingCalendar(state){
     const d=prevMonthDays-startWeek+i+1, pm=month===1?12:month-1, py=month===1?year-1:year;
     cells+=`<button type="button" class="calendar-day outside" data-date="${isoFromParts(py,pm,d)}" disabled>${d}</button>`;
   }
+  const today=localISODate();
   for(let d=1;d<=daysInMonth;d++){
-    const iso=isoFromParts(year,month,d),reason=unavailable.get(iso)||'',disabled=!!reason||(state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate);
+    const iso=isoFromParts(year,month,d),past=iso<today,reason=past?'':(unavailable.get(iso)||''),disabled=past||!!reason||(state.minDate&&iso<state.minDate)||(state.maxDate&&iso>state.maxDate);
     const classes=['calendar-day'];
+    if(past)classes.push('past');
     if(reason==='confirmed')classes.push('unavailable-confirmed');
     if(reason==='pending')classes.push('unavailable-pending');
     if(dateInRange(iso,start,end))classes.push('selected');
