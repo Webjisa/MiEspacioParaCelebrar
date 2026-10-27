@@ -158,7 +158,7 @@ function rangeHasUnavailable(start,end,unavailable){if(!start||!end)return false
 async function getUnavailableDates(spaceId){
   const map=new Map();
   const client=await getClient();
-  if(!client||!spaceId)return map;
+  if(!client||!spaceId){map.loadError=true;return map;}
   try{
     const {data,error}=await client.rpc('get_space_unavailable_ranges',{p_space_id:spaceId});
     if(error)throw error;
@@ -173,6 +173,7 @@ async function getUnavailableDates(spaceId){
     }
   }catch(error){
     console.warn('No se pudieron cargar las fechas no disponibles:',error);
+    map.loadError=true;
   }
   return map;
 }
@@ -292,6 +293,14 @@ async function initBooking(s){
   const btn=document.querySelector('#reserveBtn'),msg=document.querySelector('#message'),startEl=document.querySelector('#startDate'),endEl=document.querySelector('#endDate'),cleanEl=document.querySelector('#cleaning');if(!btn)return;
   const today=localISODate(),minDate=s.activeFrom&&s.activeFrom>today?s.activeFrom:today,maxDate=s.activeUntil||'';
   const unavailable=await getUnavailableDates(s.id);
+  if(unavailable.loadError){
+    msg.textContent='No se ha podido comprobar la disponibilidad. Recarga la página antes de solicitar una reserva.';
+    btn.disabled=true;
+    startEl.disabled=true;
+    endEl.disabled=true;
+    document.querySelectorAll('.date-picker-toggle').forEach(toggle=>toggle.disabled=true);
+    return;
+  }
   const state={space:s,minDate,maxDate,unavailable,start:'',end:'',endWasAuto:true,activeTarget:'startDate',year:new Date().getFullYear(),month:new Date().getMonth()+1,open:false};
   window.__bookingCalendarState=state;
   const initial=minDate;state.start=initial;state.end=initial;setBookingInput('startDate',initial);setBookingInput('endDate',initial);updatePriceBox(s);
