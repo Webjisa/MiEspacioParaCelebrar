@@ -698,3 +698,34 @@ body:has(#privateArea) .site-header .nav>nav a[hidden]{display:none!important}
 .admin-form-grid textarea{
   border-radius:14px;
 }
+
+
+/* Estados del calendario de reservas: los estados prevalecen sobre la selección. */
+.calendar-day.past,
+.calendar-day.past:disabled {
+  background:#fff!important;
+  color:#bdbab3!important;
+  border-color:transparent!important;
+  text-decoration:none!important;
+  font-weight:400!important;
+  box-shadow:none!important;
+  cursor:not-allowed!important;
+}
+.calendar-day.unavailable-confirmed,
+.calendar-day.unavailable-confirmed:disabled,
+.calendar-day.unavailable-confirmed.selected {
+  background:#f2b0ab!important;
+  color:#7d2622!important;
+  border-color:#e2958f!important;
+  text-decoration:line-through!important;
+  cursor:not-allowed!important;
+}
+.calendar-day.unavailable-pending,
+.calendar-day.unavailable-pending:disabled,
+.calendar-day.unavailable-pending.selected {
+  background:#f7d9a0!important;
+  color:#7d5a19!important;
+  border-color:#e8c176!important;
+  text-decoration:none!important;
+  cursor:not-allowed!important;
+}
