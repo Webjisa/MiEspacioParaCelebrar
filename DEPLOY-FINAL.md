@@ -65,6 +65,8 @@ En el proyecto Supabase activo se comprobó que:
 
 Para recuperar despliegues reproducibles, copia primero el código de la función activa desde Supabase a `supabase/functions/email-worker/index.ts`, revisa que sus variables de entorno coincidan con las que utiliza el código y vuelve a probarla. Nunca copies claves API, tokens o secretos al repositorio.
 
+La página `decidir-reserva.html` llama a la función desplegada `booking-action`. Su código fuente no está incluido actualmente en el repositorio. Antes de reconstruir o cambiar el flujo de confirmación/rechazo por correo, exporta esa función desde Supabase y versiona su código. No la reemplaces por una llamada directa desde el navegador a `consume_owner_booking_action_token` sin verificar los permisos y el modelo de autorización.
+
 ### 6. Publicación de Edge Functions
 
 Funciones que aparecen en el repositorio:
