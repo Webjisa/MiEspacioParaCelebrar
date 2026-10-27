@@ -1,15 +1,13 @@
 name: Prueba scheduler GitHub
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Comprobar scheduler
+      - name: Comprobar scheduler manualmente
         run: |
           echo "SCHEDULER FUNCIONA"
           date -u
