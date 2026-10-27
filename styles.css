@@ -729,3 +729,59 @@ body:has(#privateArea) .site-header .nav>nav a[hidden]{display:none!important}
   text-decoration:none!important;
   cursor:not-allowed!important;
 }
+
+/* Administración de fotografías: controles visibles para ordenar y elegir portada. */
+.photo-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:16px!important;
+  align-items:start;
+}
+.photo-admin{
+  display:grid!important;
+  grid-template-columns:160px minmax(0,1fr)!important;
+  gap:14px!important;
+  align-items:start!important;
+  min-width:0;
+  padding:12px!important;
+  background:#fff!important;
+  color:var(--ink,#20201f)!important;
+}
+.photo-admin>img{
+  display:block!important;
+  width:100%!important;
+  height:120px!important;
+  aspect-ratio:auto!important;
+  object-fit:cover!important;
+  border-radius:10px!important;
+}
+.photo-admin>div{
+  display:block!important;
+  min-width:0!important;
+  padding:0!important;
+  color:var(--ink,#20201f)!important;
+  overflow-wrap:anywhere;
+}
+.photo-admin>div>strong{display:block!important;color:var(--ink,#20201f)!important}
+.photo-admin p{display:block!important;color:var(--muted,#6e6c67)!important}
+.photo-admin .photo-actions{
+  display:flex!important;
+  gap:6px!important;
+  flex-wrap:wrap!important;
+  margin-top:10px;
+}
+.photo-admin .photo-actions .btn{
+  min-height:34px!important;
+  padding:0 10px!important;
+  font-size:12px!important;
+  white-space:normal;
+}
+@media(max-width:700px){
+  .photo-grid{grid-template-columns:1fr!important}
+  .photo-admin{grid-template-columns:140px minmax(0,1fr)!important}
+  .photo-admin>img{height:110px!important}
+}
+@media(max-width:430px){
+  .photo-admin{grid-template-columns:1fr!important}
+  .photo-admin>img{height:auto!important;aspect-ratio:16/10!important}
+}
