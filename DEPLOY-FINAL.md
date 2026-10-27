@@ -61,22 +61,25 @@ En el proyecto Supabase activo se comprobó que:
 - La función activa envía mediante la API de Brevo.
 - La caducidad de una solicitud y las dos notificaciones asociadas funcionaron en una prueba real.
 
-**Importante: el código desplegado y el código versionado no están sincronizados.** En este repositorio no existe `supabase/functions/email-worker/index.ts`; sí existe `supabase/functions/process-email-queue/index.ts`, que implementa la integración antigua con Resend. No despliegues esta función antigua para sustituir el trabajador de producción.
+Las fuentes se han sincronizado desde el proyecto activo de Supabase al repositorio el 27-10-2026:
 
-Para recuperar despliegues reproducibles, copia primero el código de la función activa desde Supabase a `supabase/functions/email-worker/index.ts`, revisa que sus variables de entorno coincidan con las que utiliza el código y vuelve a probarla. Nunca copies claves API, tokens o secretos al repositorio.
+- `supabase/functions/email-worker/index.ts` — versión activa 16; utiliza Brevo y secretos de entorno.
+- `supabase/functions/booking-action/index.ts` — versión activa 3; consume los tokens de confirmación/rechazo mediante el RPC de servidor.
 
-La página `decidir-reserva.html` llama a la función desplegada `booking-action`. Su código fuente no está incluido actualmente en el repositorio. Antes de reconstruir o cambiar el flujo de confirmación/rechazo por correo, exporta esa función desde Supabase y versiona su código. No la reemplaces por una llamada directa desde el navegador a `consume_owner_booking_action_token` sin verificar los permisos y el modelo de autorización.
+La copia a GitHub no cambia la versión desplegada en producción. Nunca copies claves API, tokens o secretos al repositorio. No despliegues `process-email-queue` para sustituir a `email-worker`: sigue siendo una implementación heredada basada en Resend.
 
 ### 6. Publicación de Edge Functions
 
 Funciones que aparecen en el repositorio:
 
 - `create-owner`
-- `process-email-queue` — implementación heredada de Resend; **no desplegar sobre el sistema activo** hasta sincronizarla.
+- `email-worker` — función de producción con Brevo.
+- `booking-action` — procesa enlaces de decisión de reserva.
+- `process-email-queue` — implementación heredada de Resend; **no desplegar sobre el sistema activo**.
 - `expire-bookings`
 - `send-survey`
 
-Antes de desplegar cualquier función, confirma que el código versionado coincide con el que se está utilizando en producción. La función `email-worker` que está activa actualmente debe incorporarse primero al repositorio. No hace falta modificar los cron que ya están funcionando para realizar esa sincronización.
+Antes de desplegar cualquier función, compara su código con el de producción y revisa las variables de entorno. La sincronización de `email-worker` y `booking-action` ya está hecha; no hace falta modificar los cron para versionarlas.
 
 ### 7. Procesador de emails
 
@@ -99,15 +102,7 @@ Si `pg_cron` no está disponible, programa las Edge Functions `expire-bookings` 
 
 ### 8.1. Completar las tareas automáticas que faltan
 
-La revisión de producción del 27-10-2026 encontró activos estos trabajos: `email-worker-every-minute`, `expire-pending-bookings-every-5-minutes` y `miespacio-owner-reminders`. No aparecían programados los trabajos de limpieza de datos, caducidad de espacios y creación/envío de encuestas.
-
-Ejecuta una sola vez este archivo en Supabase → SQL Editor:
-
-`supabase/CIERRE-AUTOMATIZACIONES-2026-10-27.sql`
-
-La migración crea un planificador idempotente para las encuestas y programa los tres trabajos que faltaban. Mantiene intactos los cron que ya funcionan y aborta si `pg_cron` no está instalado. No vuelvas a ejecutar `FINAL-2026.sql` ni las migraciones históricas para activar estas tareas.
-
-Después de ejecutarla, comprueba en una única consulta que aparecen los trabajos `miespacio-cleanup`, `miespacio-expire-spaces` y `miespacio-surveys-daily` con `active = true`. La primera ejecución de los trabajos diarios ocurrirá en su siguiente horario programado.
+La migración `supabase/CIERRE-AUTOMATIZACIONES-2026-10-27.sql` ya se ejecutó correctamente. La comprobación del 27-10-2026 confirmó activos `miespacio-cleanup`, `miespacio-expire-spaces` y `miespacio-surveys-daily`, además de los trabajos de caducidad de reservas, emails y recordatorios. No vuelvas a ejecutar esa SQL solo para repetir la sincronización de funciones.
 
 ### 9. Comprobar autenticación
 
