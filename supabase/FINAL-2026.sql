@@ -262,121 +262,313 @@ grant execute on function public.get_public_space_services(uuid) to anon,authent
 -- ============================================================
 -- 9. RESERVA: SNAPSHOT + RETENCIÓN 72H
 -- ============================================================
-create or replace function public.create_booking_request(
-  p_space_id uuid,
-  p_customer_name text,
-  p_customer_email text,
-  p_customer_phone text,
-  p_start_date date,
-  p_end_date date,
-  p_cleaning_requested boolean default false,
-  p_customer_notes text default null,
-  p_selected_services jsonb default '[]'::jsonb
-) returns uuid
-language plpgsql security definer set search_path=public,private as $$
-declare
-  v_booking_id uuid;
-  v_owner_id uuid;
-  v_owner_email text;
-  v_owner_name text;
-  v_space_name text;
-  v_city text;
-  v_province text;
-  v_address text;
-  v_description text;
-  v_opening time;
-  v_closing time;
-  v_conditions text;
-  v_weekday numeric;
-  v_friday numeric;
-  v_saturday numeric;
-  v_sunday numeric;
-  v_deposit numeric;
-  v_cleaning_available boolean;
-  v_cleaning_price numeric;
-  v_total_days integer := (p_end_date-p_start_date)+1;
-  v_rental numeric := 0;
-  v_cleaning numeric := 0;
-  v_services_total numeric := 0;
-  v_service_price numeric;
-  v_service_id uuid;
-  v_service_name text;
-  v_services jsonb := '[]'::jsonb;
-  v_requested jsonb;
-  v_day date;
-  v_expires timestamptz := now()+interval '72 hours';
-  v_pricing jsonb;
-  v_space_snapshot jsonb;
-begin
-  if p_space_id is null or p_start_date is null or p_end_date is null or p_end_date<p_start_date then
-    raise exception 'Rango de fechas no válido';
-  end if;
-  if btrim(coalesce(p_customer_name,''))='' or btrim(coalesce(p_customer_email,''))='' or btrim(coalesce(p_customer_phone,''))='' then
-    raise exception 'Nombre, email y teléfono son obligatorios';
-  end if;
-  if not public.final_space_is_public(p_space_id) then raise exception 'El espacio no está disponible'; end if;
-  if exists(select 1 from public.bookings where space_id=p_space_id and booking_status in ('pending','confirmed') and start_date<=p_end_date and end_date>=p_start_date) then
-    raise exception 'Alguna de las fechas seleccionadas no está disponible';
-  end if;
-  if exists(select 1 from public.blocked_dates where space_id=p_space_id and start_date<=p_end_date and end_date>=p_start_date) then
-    raise exception 'Alguna de las fechas seleccionadas no está disponible';
-  end if;
+CREATE OR REPLACE FUNCTION public.create_booking_request(p_space_id uuid, p_customer_name text, p_customer_email text, p_customer_phone text, p_start_date date, p_end_date date, p_cleaning_requested boolean DEFAULT false, p_customer_notes text DEFAULT NULL::text, p_selected_services jsonb DEFAULT '[]'::jsonb)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
+DECLARE
+    v_booking_id uuid;
+    v_owner_id uuid;
+    v_owner_email text;
+    v_owner_name text;
 
-  select owner_id,name,city,province,address,description,opening_time,closing_time,conditions_text,
-         weekday_price,friday_price,saturday_price,sunday_price,deposit,cleaning_available,cleaning_price
-  into v_owner_id,v_space_name,v_city,v_province,v_address,v_description,v_opening,v_closing,v_conditions,
-       v_weekday,v_friday,v_saturday,v_sunday,v_deposit,v_cleaning_available,v_cleaning_price
-  from public.spaces where id=p_space_id for share;
+    v_space public.spaces%rowtype;
 
-  if p_cleaning_requested and not coalesce(v_cleaning_available,false) then
-    raise exception 'El servicio de limpieza no está disponible';
-  end if;
+    v_expires timestamptz := now() + interval '72 hours';
 
-  for v_day in select generate_series(p_start_date,p_end_date,interval '1 day')::date loop
-    v_rental := v_rental + coalesce(case extract(isodow from v_day)::integer
-      when 5 then v_friday when 6 then v_saturday when 7 then v_sunday else v_weekday end,0);
-  end loop;
-  if p_cleaning_requested then v_cleaning:=coalesce(v_cleaning_price,0); end if;
+    v_quote jsonb;
 
-  for v_requested in select value from jsonb_array_elements(coalesce(p_selected_services,'[]'::jsonb)) loop
-    begin v_service_id := (v_requested->>'id')::uuid; exception when others then raise exception 'Servicio seleccionado no válido'; end;
-    select sc.name,ss.price into v_service_name,v_service_price
-    from public.space_services ss join public.service_catalog sc on sc.id=ss.service_id
-    where ss.id=v_service_id and ss.space_id=p_space_id and ss.active=true and ss.included=false and sc.active=true;
-    if not found then raise exception 'Uno de los servicios seleccionados ya no está disponible'; end if;
-    v_services_total:=v_services_total+coalesce(v_service_price,0);
-    v_services:=v_services||jsonb_build_array(jsonb_build_object('id',v_service_id,'name',v_service_name,'price',v_service_price));
-  end loop;
+    v_action_tokens jsonb;
+    v_confirm_token text;
+    v_reject_token text;
 
-  v_pricing:=jsonb_build_object(
-    'rental_total',round(v_rental,2),
-    'cleaning_total',round(v_cleaning,2),
-    'services_total',round(v_services_total,2),
-    'deposit',round(coalesce(v_deposit,0),2),
-    'grand_total',round(v_rental+v_cleaning+v_services_total+coalesce(v_deposit,0),2)
-  );
-  v_space_snapshot:=jsonb_build_object(
-    'name',v_space_name,'city',v_city,'province',v_province,'address',v_address,'description',v_description,
-    'opening_time',v_opening,'closing_time',v_closing,'weekday_price',v_weekday,'friday_price',v_friday,
-    'saturday_price',v_saturday,'sunday_price',v_sunday,'cleaning_available',v_cleaning_available,
-    'cleaning_price',v_cleaning_price,'deposit',v_deposit
-  );
+BEGIN
 
-  insert into public.bookings(customer_name,customer_email,customer_phone,space_id,start_date,end_date,total_days,cleaning_requested,customer_notes,booking_status,expires_at,pricing_snapshot,space_snapshot,conditions_snapshot,services_snapshot,created_at,updated_at)
-  values(btrim(p_customer_name),lower(btrim(p_customer_email)),btrim(p_customer_phone),p_space_id,p_start_date,p_end_date,v_total_days,coalesce(p_cleaning_requested,false),nullif(btrim(p_customer_notes),''),'pending',v_expires,v_pricing,v_space_snapshot,v_conditions,v_services,now(),now())
-  returning id into v_booking_id;
+    -- ========================================================
+    -- 1. VALIDACIONES
+    -- ========================================================
 
-  select p.email,trim(coalesce(p.first_name,'')||' '||coalesce(p.last_name,''))
-  into v_owner_email,v_owner_name
-  from public.owners o join public.profiles p on p.id=o.profile_id where o.id=v_owner_id;
+    IF btrim(coalesce(p_customer_name,'')) = ''
+       OR btrim(coalesce(p_customer_email,'')) = ''
+       OR btrim(coalesce(p_customer_phone,'')) = ''
+    THEN
+        RAISE EXCEPTION 'Nombre, email y teléfono son obligatorios';
+    END IF;
 
-  perform public.final_queue_email('reservas','customer_request_received',lower(btrim(p_customer_email)),btrim(p_customer_name),jsonb_build_object('booking_id',v_booking_id,'customer_name',p_customer_name,'space_name',v_space_name,'start_date',p_start_date,'end_date',p_end_date),v_booking_id,p_space_id);
-  perform public.final_queue_email('reservas','request_created',v_owner_email,v_owner_name,
-    jsonb_build_object('booking_id',v_booking_id,'space_name',v_space_name,'customer_name',p_customer_name,'customer_email',lower(btrim(p_customer_email)),'customer_phone',p_customer_phone,'start_date',p_start_date,'end_date',p_end_date,'expires_at',v_expires,'pricing_snapshot',v_pricing,'services_snapshot',v_services),v_booking_id,p_space_id);
-  perform public.final_queue_email('reservas','admin_request_created','miespacioparacelebrar@gmail.com','Administración',
-    jsonb_build_object('booking_id',v_booking_id,'space_name',v_space_name,'customer_name',p_customer_name,'customer_email',lower(btrim(p_customer_email)),'customer_phone',p_customer_phone,'start_date',p_start_date,'end_date',p_end_date,'expires_at',v_expires),v_booking_id,p_space_id);
-  return v_booking_id;
-end; $$;
+    IF p_start_date IS NULL
+       OR p_end_date IS NULL
+       OR p_end_date < p_start_date
+    THEN
+        RAISE EXCEPTION 'Rango de fechas no válido';
+    END IF;
+
+    IF NOT public.final_space_is_public(p_space_id) THEN
+        RAISE EXCEPTION 'El espacio no está disponible';
+    END IF;
+
+
+    -- ========================================================
+    -- 2. BLOQUEO TRANSACCIONAL DEL ESPACIO
+    -- ========================================================
+    --
+    -- IMPORTANTE:
+    -- Este bloqueo se realiza ANTES de consultar disponibilidad.
+    --
+    -- Dos reservas simultáneas para el mismo espacio tendrán que
+    -- esperar una a la otra.
+    --
+    -- Una vez liberado el bloqueo, la segunda transacción volverá
+    -- a comprobar las fechas y detectará la reserva creada por la
+    -- primera.
+    -- ========================================================
+
+    SELECT *
+    INTO v_space
+    FROM public.spaces
+    WHERE id = p_space_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El espacio no existe';
+    END IF;
+
+
+    -- ========================================================
+    -- 3. COMPROBAR RESERVAS EXISTENTES
+    -- ========================================================
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.bookings
+        WHERE space_id = p_space_id
+          AND booking_status IN ('pending','confirmed')
+          AND start_date <= p_end_date
+          AND end_date >= p_start_date
+    )
+    THEN
+        RAISE EXCEPTION 'Alguna de las fechas seleccionadas no está disponible';
+    END IF;
+
+
+    -- ========================================================
+    -- 4. COMPROBAR BLOQUEOS
+    -- ========================================================
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.blocked_dates
+        WHERE space_id = p_space_id
+          AND start_date <= p_end_date
+          AND end_date >= p_start_date
+    )
+    THEN
+        RAISE EXCEPTION 'Alguna de las fechas seleccionadas no está disponible';
+    END IF;
+
+
+    -- ========================================================
+    -- 5. CALCULAR PRESUPUESTO
+    -- ========================================================
+
+    v_quote := public.get_booking_quote(
+        p_space_id,
+        p_start_date,
+        p_end_date,
+        p_cleaning_requested,
+        p_selected_services
+    );
+
+
+    -- ========================================================
+    -- 6. CREAR RESERVA
+    -- ========================================================
+
+    INSERT INTO public.bookings (
+        customer_name,
+        customer_email,
+        customer_phone,
+        space_id,
+        start_date,
+        end_date,
+        total_days,
+        cleaning_requested,
+        customer_notes,
+        booking_status,
+        expires_at,
+        pricing_snapshot,
+        space_snapshot,
+        conditions_snapshot,
+        services_snapshot,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        btrim(p_customer_name),
+        lower(btrim(p_customer_email)),
+        btrim(p_customer_phone),
+        p_space_id,
+        p_start_date,
+        p_end_date,
+        (p_end_date - p_start_date) + 1,
+        coalesce(p_cleaning_requested,false),
+        nullif(btrim(p_customer_notes),''),
+        'pending',
+        v_expires,
+        v_quote,
+
+        jsonb_build_object(
+            'name', v_space.name,
+            'city', v_space.city,
+            'province', v_space.province,
+            'description', v_space.description,
+            'opening_time', v_space.opening_time,
+            'closing_time', v_space.closing_time,
+            'deposit', v_space.deposit
+        ),
+
+        v_space.conditions_text,
+
+        v_quote -> 'services_snapshot',
+
+        now(),
+        now()
+    )
+    RETURNING id INTO v_booking_id;
+
+
+    -- ========================================================
+    -- 7. PROPIETARIO
+    -- ========================================================
+
+    SELECT
+        o.id,
+        p.email,
+        trim(
+            coalesce(p.first_name,'')
+            || ' '
+            || coalesce(p.last_name,'')
+        )
+    INTO
+        v_owner_id,
+        v_owner_email,
+        v_owner_name
+    FROM public.owners o
+    JOIN public.profiles p
+        ON p.id = o.profile_id
+    WHERE o.id = v_space.owner_id;
+
+
+    -- ========================================================
+    -- 8. TOKENS
+    -- ========================================================
+
+    v_action_tokens :=
+        public.create_owner_booking_action_tokens(
+            v_booking_id,
+            v_owner_id,
+            v_expires
+        );
+
+    v_confirm_token :=
+        v_action_tokens ->> 'confirm_token';
+
+    v_reject_token :=
+        v_action_tokens ->> 'reject_token';
+
+
+    -- ========================================================
+    -- 9. CLIENTE
+    -- ========================================================
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        'customer_request_received',
+        lower(btrim(p_customer_email)),
+        btrim(p_customer_name),
+
+        jsonb_build_object(
+            'booking_id', v_booking_id,
+            'customer_name', p_customer_name,
+            'space_name', v_space.name,
+            'start_date', p_start_date,
+            'end_date', p_end_date
+        ),
+
+        v_booking_id,
+        p_space_id
+    );
+
+
+    -- ========================================================
+    -- 10. PROPIETARIO
+    -- ========================================================
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        'request_created',
+        v_owner_email,
+        v_owner_name,
+
+        jsonb_build_object(
+            'booking_id', v_booking_id,
+            'space_name', v_space.name,
+
+            'customer_name', p_customer_name,
+            'customer_email', lower(btrim(p_customer_email)),
+            'customer_phone', p_customer_phone,
+
+            'start_date', p_start_date,
+            'end_date', p_end_date,
+
+            'expires_at', v_expires,
+
+            'confirm_token', v_confirm_token,
+            'reject_token', v_reject_token,
+
+            'pricing_snapshot', v_quote,
+            'services_snapshot', v_quote -> 'services_snapshot'
+        ),
+
+        v_booking_id,
+        p_space_id
+    );
+
+
+    -- ========================================================
+    -- 11. ADMIN
+    -- ========================================================
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        'admin_request_created',
+        'miespacioparacelebrar@gmail.com',
+        'Admin',
+
+        jsonb_build_object(
+            'booking_id', v_booking_id,
+            'space_name', v_space.name,
+
+            'customer_name', p_customer_name,
+            'customer_email', lower(btrim(p_customer_email)),
+            'customer_phone', p_customer_phone,
+
+            'start_date', p_start_date,
+            'end_date', p_end_date,
+
+            'expires_at', v_expires
+        ),
+
+        v_booking_id,
+        p_space_id
+    );
+
+
+    RETURN v_booking_id;
+
+END;
+$function$;
 revoke all on function public.create_booking_request(uuid,text,text,text,date,date,boolean,text,jsonb) from public,anon,authenticated;
 grant execute on function public.create_booking_request(uuid,text,text,text,date,date,boolean,text,jsonb) to anon,authenticated;
 
@@ -971,3 +1163,173 @@ exception when others then null;
 end $$;
 
 -- FIN FINAL-2026
+
+-- ============================================================
+-- 29. COTIZACIÓN DE RESERVAS: VERSIÓN VIGENTE Y COMPATIBLE
+-- Corrige el snapshot de servicios y rechaza solicitudes en fechas pasadas.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.get_booking_quote(p_space_id uuid, p_start_date date, p_end_date date, p_cleaning_requested boolean DEFAULT false, p_selected_services jsonb DEFAULT '[]'::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
+DECLARE
+    v_deposit numeric := 0;
+    v_cleaning_available boolean := false;
+    v_cleaning_price numeric := 0;
+    v_rental numeric := 0;
+    v_cleaning numeric := 0;
+    v_services_total numeric := 0;
+    v_has_override boolean := false;
+    v_day date;
+    v_price numeric;
+    v_requested jsonb;
+    v_service_id uuid;
+    v_service_name text;
+    v_service_price numeric;
+    v_group text;
+    v_required boolean;
+    v_replaces boolean;
+    v_mode text;
+    v_allowed smallint[];
+    v_dep uuid;
+    v_services jsonb := '[]'::jsonb;
+    v_daily jsonb := '[]'::jsonb;
+    v_selected_ids uuid[] := array[]::uuid[];
+    v_days integer := (p_end_date - p_start_date) + 1;
+BEGIN
+
+    IF p_start_date IS NULL
+       OR p_end_date IS NULL
+       OR p_end_date < p_start_date THEN
+        RAISE EXCEPTION 'Rango de fechas no válido';
+    END IF;
+
+    IF p_start_date < current_date THEN
+        RAISE EXCEPTION 'No se pueden solicitar fechas pasadas';
+    END IF;
+
+    IF NOT public.final_space_is_public(p_space_id) THEN
+        RAISE EXCEPTION 'El espacio no está disponible públicamente';
+    END IF;
+
+    -- Resto de la lógica original se mantiene.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.spaces
+        WHERE id = p_space_id
+    ) THEN
+        RAISE EXCEPTION 'El espacio no existe';
+    END IF;
+
+    SELECT
+        coalesce(deposit,0),
+        coalesce(cleaning_available,false),
+        coalesce(cleaning_price,0)
+    INTO
+        v_deposit,
+        v_cleaning_available,
+        v_cleaning_price
+    FROM public.spaces
+    WHERE id = p_space_id;
+
+    IF p_cleaning_requested AND NOT v_cleaning_available THEN
+        RAISE EXCEPTION 'El servicio de limpieza no está disponible';
+    END IF;
+
+    FOR v_day IN
+        SELECT generate_series(
+            p_start_date,
+            p_end_date,
+            interval '1 day'
+        )::date
+    LOOP
+        v_price := public.get_space_price_for_date(
+            p_space_id,
+            v_day
+        );
+
+        v_rental := v_rental + v_price;
+    END LOOP;
+
+    IF p_cleaning_requested THEN
+        v_cleaning := coalesce(v_cleaning_price,0);
+    END IF;
+
+    FOR v_requested IN
+        SELECT value
+        FROM jsonb_array_elements(
+            coalesce(p_selected_services,'[]'::jsonb)
+        )
+    LOOP
+
+        v_service_id := (v_requested->>'id')::uuid;
+
+        SELECT
+            sc.name,
+            ss.price,
+            ss.selection_group,
+            ss.selection_required,
+            ss.replaces_rental,
+            ss.price_mode,
+            ss.allowed_days,
+            ss.depends_on_service_id
+        INTO
+            v_service_name,
+            v_service_price,
+            v_group,
+            v_required,
+            v_replaces,
+            v_mode,
+            v_allowed,
+            v_dep
+        FROM public.space_services ss
+        JOIN public.service_catalog sc
+            ON sc.id = ss.service_id
+        WHERE ss.id = v_service_id
+          AND ss.space_id = p_space_id
+          AND ss.active = true
+          AND ss.included = false
+          AND sc.active = true;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION
+                'Uno de los servicios seleccionados ya no está disponible';
+        END IF;
+
+        v_services_total :=
+            v_services_total + coalesce(v_service_price,0);
+
+        v_services :=
+            v_services ||
+            jsonb_build_array(
+                jsonb_build_object(
+                    'id',v_service_id,
+                    'name',v_service_name,
+                    'price',v_service_price
+                )
+            );
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'rental_total', round(v_rental,2),
+        'cleaning_total', round(v_cleaning,2),
+        'services_total', round(v_services_total,2),
+        'deposit', round(v_deposit,2),
+        'grand_total',
+            round(
+                v_rental
+                + v_cleaning
+                + v_services_total
+                + v_deposit,
+                2
+            ),
+        'daily', v_daily,
+        'services', v_services,
+        'services_snapshot', v_services
+    );
+END;
+$function$;
+revoke all on function public.get_booking_quote(uuid,date,date,boolean,jsonb) from public;
+grant execute on function public.get_booking_quote(uuid,date,date,boolean,jsonb) to anon, authenticated;
