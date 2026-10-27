@@ -404,24 +404,21 @@ async function initPrivateLogin(){
 
   const captcha=window.MIESPACIO_TURNSTILE;
   let captchaToken='',widgetId=null;
-  if(!captcha){
-    msg.textContent='No se ha podido cargar la verificación de seguridad. Recarga la página.';
-    msg.classList.add('error');
-    return;
-  }
-  try{
-    widgetId=await captcha.render(document.querySelector('#loginTurnstile'),token=>{captchaToken=token;});
-  }catch(error){
-    console.error('Error cargando Turnstile:',error);
-    msg.textContent='No se ha podido cargar la verificación de seguridad. Comprueba tu conexión e inténtalo de nuevo.';
-    msg.classList.add('error');
-    return;
+  if(captcha){
+    try{
+      widgetId=await captcha.render(document.querySelector('#loginTurnstile'),token=>{captchaToken=token;});
+    }catch(error){
+      // El servidor de Supabase es quien impone la protección. Mientras CAPTCHA esté desactivado,
+      // un fallo del widget no debe bloquear el acceso normal; cuando se active, Auth rechazará
+      // las solicitudes que no incluyan un token válido.
+      console.error('Error cargando Turnstile:',error);
+    }
   }
 
   form.addEventListener('submit',async e=>{
     e.preventDefault();
     msg.classList.remove('error');
-    if(!captchaToken){
+    if(widgetId!==null&&!captchaToken){
       msg.textContent='Completa la verificación de seguridad antes de acceder.';
       msg.classList.add('error');
       return;
@@ -433,12 +430,14 @@ async function initPrivateLogin(){
     const password=document.querySelector('#loginPassword').value;
     let error=null;
     try{
-      const result=await client.auth.signInWithPassword({email,password,options:{captchaToken:tokenForRequest}});
+      const credentials={email,password};
+      if(tokenForRequest)credentials.options={captchaToken:tokenForRequest};
+      const result=await client.auth.signInWithPassword(credentials);
       error=result.error;
     }catch(requestError){
       error=requestError;
     }
-    captcha.reset(widgetId,token=>{captchaToken=token;});
+    if(captcha&&widgetId!==null)captcha.reset(widgetId,token=>{captchaToken=token;});
     if(error){
       console.error('Error de acceso:',error);
       msg.textContent=/captcha/i.test(String(error.message||''))?'No se ha podido verificar la solicitud. Espera a que la verificación se renueve e inténtalo de nuevo.':'No se ha podido iniciar sesión. Comprueba el correo y la contraseña.';
