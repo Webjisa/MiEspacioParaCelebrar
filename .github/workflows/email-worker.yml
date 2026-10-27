@@ -1,8 +1,6 @@
 name: Procesar cola de emails
 
 on:
-  schedule:
-    - cron: '50 16 * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,4 +14,7 @@ jobs:
         run: |
           test -n "$SUPABASE_EMAIL_WORKER_URL"
           test -n "$CRON_SECRET"
-          curl --fail-with-body -X POST "$SUPABASE_EMAIL_WORKER_URL"             -H "x-cron-secret: $CRON_SECRET"             -H "Content-Type: application/json"             --data '{}'
+          curl --fail-with-body -X POST "$SUPABASE_EMAIL_WORKER_URL" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --data '{}'
