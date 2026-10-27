@@ -50,18 +50,18 @@ Debe conservarse como la SQL consolidada de la versión final. Las SQL anteriore
 
 No guardar secretos en el frontend ni en GitHub. La service role key de Supabase y las claves API del proveedor de correo se configuran exclusivamente como secretos de Edge Functions.
 
-## Publicación
+## Publicación y sincronización de producción
 
-El repositorio contiene la web estática para GitHub Pages. El 27-10-2026 se verificó en el proyecto Supabase activo la caducidad automática y el envío de notificaciones mediante Brevo. Queda pendiente sincronizar el código fuente del trabajador de correo: la función desplegada `email-worker` todavía no está versionada aquí y `supabase/functions/process-email-queue/index.ts` es una implementación antigua basada en Resend.
+El frontend se publica en GitHub Pages y la lógica sensible se ejecuta en Supabase. El 27-10-2026 se recuperó el código desplegado de las dos Edge Functions activas y se versionó en el repositorio:
+- `supabase/functions/email-worker/index.ts` — función activa (versión desplegada 16), envío mediante Brevo.
+- `supabase/functions/booking-action/index.ts` — función activa (versión desplegada 3), consumo seguro del token para aceptar o rechazar solicitudes.
 
-## Importante: sincronización del correo pendiente
+Los archivos se copiaron desde Supabase a GitHub sin incluir claves API ni secretos. Esta sincronización de fuentes no vuelve a desplegar ni modifica las funciones en producción.
 
-No despliegues `process-email-queue` desde este repositorio para sustituir el trabajador activo. La configuración comprobada en Supabase usa `email-worker` y Brevo, pero el código fuente de esa función aún no está incluido en el repositorio. Antes de volver a desplegar o reconstruir el proyecto, exporta la función activa a `supabase/functions/email-worker/index.ts` y revisa sus secretos sin publicarlos.
+**No despliegues** `supabase/functions/process-email-queue/index.ts` para sustituir a `email-worker`: es una implementación heredada basada en Resend.
 
-## Automatizaciones pendientes de activar en Supabase
+## Automatizaciones de producción verificadas
 
-La revisión del 27-10-2026 confirmó que la expiración de solicitudes, el trabajador de correo y los recordatorios tienen cron activo. También existen las funciones de limpieza de reservas, caducidad de espacios y creación de encuestas, pero esos tres trabajos no aparecían programados.
+El 27-10-2026 se comprobaron como activos estos trabajos de Supabase: `email-worker-every-minute`, `expire-pending-bookings-every-5-minutes`, `miespacio-owner-reminders`, `miespacio-cleanup`, `miespacio-expire-spaces` y `miespacio-surveys-daily`. No hace falta volver a ejecutar la SQL de automatizaciones para esta sincronización.
 
-Después de revisar la migración, ejecuta una sola vez `supabase/CIERRE-AUTOMATIZACIONES-2026-10-27.sql` en Supabase SQL Editor. La migración programa la limpieza diaria, la caducidad diaria de espacios y la preparación diaria de encuestas, sin sustituir los tres trabajos existentes.
-
-La función desplegada `booking-action`, usada por `decidir-reserva.html` para consumir enlaces de confirmación/rechazo, tampoco está versionada en este repositorio. No la sustituyas ni cambies el flujo de los enlaces hasta exportar su código actual desde Supabase y añadirlo al repositorio. La página usa deliberadamente el endpoint desplegado para no llamar directamente a un RPC cuyo permiso anónimo no está confirmado.
+La cola de correo tenía 21 comunicaciones con estado `sent` y ninguna pendiente o fallida. Los mensajes de error de GitHub del 24-10-2026 correspondían a una restricción temporal de Supabase por superar la cuota de transferencia; las ejecuciones posteriores comprobadas fueron satisfactorias.
