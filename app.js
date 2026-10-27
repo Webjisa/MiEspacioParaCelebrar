@@ -418,11 +418,8 @@ async function initPrivateLogin(){
   form.addEventListener('submit',async e=>{
     e.preventDefault();
     msg.classList.remove('error');
-    if(widgetId!==null&&!captchaToken){
-      msg.textContent='Completa la verificación de seguridad antes de acceder.';
-      msg.classList.add('error');
-      return;
-    }
+    // El servidor es la autoridad: si Turnstile aún no ha emitido un token,
+    // se deja que Supabase decida según esté activada la protección en el proyecto.
     const tokenForRequest=captchaToken;
     captchaToken='';
     msg.textContent='Accediendo…';
