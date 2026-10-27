@@ -95,6 +95,18 @@ La SQL crea:
 
 Si `pg_cron` no está disponible, programa las Edge Functions `expire-bookings` y `send-survey` con el mecanismo de tareas disponible en tu proyecto.
 
+### 8.1. Completar las tareas automáticas que faltan
+
+La revisión de producción del 27-10-2026 encontró activos estos trabajos: `email-worker-every-minute`, `expire-pending-bookings-every-5-minutes` y `miespacio-owner-reminders`. No aparecían programados los trabajos de limpieza de datos, caducidad de espacios y creación/envío de encuestas.
+
+Ejecuta una sola vez este archivo en Supabase → SQL Editor:
+
+`supabase/CIERRE-AUTOMATIZACIONES-2026-10-27.sql`
+
+La migración crea un planificador idempotente para las encuestas y programa los tres trabajos que faltaban. Mantiene intactos los cron que ya funcionan y aborta si `pg_cron` no está instalado. No vuelvas a ejecutar `FINAL-2026.sql` ni las migraciones históricas para activar estas tareas.
+
+Después de ejecutarla, comprueba en una única consulta que aparecen los trabajos `miespacio-cleanup`, `miespacio-expire-spaces` y `miespacio-surveys-daily` con `active = true`. La primera ejecución de los trabajos diarios ocurrirá en su siguiente horario programado.
+
 ### 9. Comprobar autenticación
 
 Debe existir:
