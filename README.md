@@ -57,3 +57,9 @@ El repositorio contiene la web estática para GitHub Pages. El 27-10-2026 se ver
 ## Importante: sincronización del correo pendiente
 
 No despliegues `process-email-queue` desde este repositorio para sustituir el trabajador activo. La configuración comprobada en Supabase usa `email-worker` y Brevo, pero el código fuente de esa función aún no está incluido en el repositorio. Antes de volver a desplegar o reconstruir el proyecto, exporta la función activa a `supabase/functions/email-worker/index.ts` y revisa sus secretos sin publicarlos.
+
+## Automatizaciones pendientes de activar en Supabase
+
+La revisión del 27-10-2026 confirmó que la expiración de solicitudes, el trabajador de correo y los recordatorios tienen cron activo. También existen las funciones de limpieza de reservas, caducidad de espacios y creación de encuestas, pero esos tres trabajos no aparecían programados.
+
+Después de revisar la migración, ejecuta una sola vez `supabase/CIERRE-AUTOMATIZACIONES-2026-10-27.sql` en Supabase SQL Editor. La migración programa la limpieza diaria, la caducidad diaria de espacios y la preparación diaria de encuestas, sin sustituir los tres trabajos existentes.
