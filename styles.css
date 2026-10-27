@@ -807,3 +807,9 @@ body:has(#privateArea) .site-header .nav>nav a[hidden]{display:none!important}
 }
 .space-detail-image .space-photo-placeholder-hero{position:absolute;inset:0}
 .space-detail-image.no-photo:after{background:transparent}
+
+/* Refuerzo del enlace activo en la navegación pública y privada. */
+.site-header .nav > nav > a.active,
+.site-header .nav > nav > a[aria-current="page"] {
+  font-weight: 800 !important;
+}
