@@ -39,7 +39,7 @@
    e.preventDefault();
    const msg=document.querySelector('#requestMessage');
    msg.classList.remove('error');
-   if(widgetId!==null&&!captchaToken){msg.textContent='Completa la verificación de seguridad antes de solicitar el enlace.';msg.classList.add('error');return;}
+   // Supabase valida el token cuando CAPTCHA está activado y evita bloquear el flujo antes de ello.
    const tokenForRequest=captchaToken;
    captchaToken='';
    msg.textContent='Enviando…';
