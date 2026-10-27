@@ -10,6 +10,88 @@
   const num = (root,id) => val(root,id)==='' ? null : Number(val(root,id));
   const toast = (root,msg,error=false) => { const el=root.querySelector('.admin-message'); if(el){el.textContent=msg;el.classList.toggle('error',error);} };
 
+  const MAX_PHOTO_INPUT_BYTES = 15 * 1024 * 1024;
+  const MAX_PHOTO_SIDE = 2048;
+  const PHOTO_WEBP_QUALITY = 0.84;
+  const photoSizeLabel = bytes => bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toLocaleString('es-ES',{maximumFractionDigits:1})} MB`
+    : `${Math.max(1,Math.round(bytes / 1024))} KB`;
+  const photoExtension = type => type === 'image/webp' ? 'webp' : type === 'image/png' ? 'png' : 'jpg';
+  const canvasBlob = (canvas,type,quality) => new Promise(resolve => canvas.toBlob(resolve,type,quality));
+
+  async function optimizeSpacePhoto(file) {
+    if (!['image/jpeg','image/png','image/webp'].includes(String(file.type||'').toLowerCase())) {
+      throw new Error('Formato no admitido. Usa JPG, PNG o WebP.');
+    }
+    if (file.size > MAX_PHOTO_INPUT_BYTES) {
+      throw new Error('La fotografía original supera 15 MB. Redúcela un poco e inténtalo de nuevo.');
+    }
+
+    let source = null, bitmap = null, objectUrl = null;
+    try {
+      if (typeof window.createImageBitmap === 'function') {
+        try { bitmap = await window.createImageBitmap(file); source = bitmap; } catch (_) {}
+      }
+      if (!source) {
+        objectUrl = URL.createObjectURL(file);
+        source = await new Promise((resolve,reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => reject(new Error('No se ha podido abrir la fotografía.'));
+          image.src = objectUrl;
+        });
+      }
+
+      const width = source.width || source.naturalWidth;
+      const height = source.height || source.naturalHeight;
+      if (!width || !height) throw new Error('La fotografía no tiene dimensiones válidas.');
+      const scale = Math.min(1, MAX_PHOTO_SIDE / Math.max(width,height));
+      const outWidth = Math.max(1,Math.round(width*scale));
+      const outHeight = Math.max(1,Math.round(height*scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = outWidth; canvas.height = outHeight;
+      const context = canvas.getContext('2d',{alpha:true});
+      if (!context) throw new Error('El navegador no ha podido procesar la fotografía.');
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(source,0,0,outWidth,outHeight);
+
+      let blob = await canvasBlob(canvas,'image/webp',PHOTO_WEBP_QUALITY);
+      if (!blob) throw new Error('No se ha podido optimizar la fotografía.');
+      if (blob.type.toLowerCase() !== 'image/webp') {
+        if (String(file.type).toLowerCase() === 'image/png') {
+          blob = await canvasBlob(canvas,'image/png');
+        } else {
+          const jpegCanvas = document.createElement('canvas');
+          jpegCanvas.width = outWidth; jpegCanvas.height = outHeight;
+          const jpegContext = jpegCanvas.getContext('2d');
+          if (!jpegContext) throw new Error('El navegador no ha podido procesar la fotografía.');
+          jpegContext.fillStyle = '#ffffff';
+          jpegContext.fillRect(0,0,outWidth,outHeight);
+          jpegContext.drawImage(source,0,0,outWidth,outHeight);
+          blob = await canvasBlob(jpegCanvas,'image/jpeg',0.88);
+        }
+      }
+      if (!blob) throw new Error('No se ha podido generar la fotografía optimizada.');
+
+      // Conserva el original si la conversión no reduce bytes; nunca se sube una versión más pesada.
+      if (blob.size >= file.size) {
+        return {file, originalSize:file.size, uploadedSize:file.size, optimized:false, width, height};
+      }
+      const type = blob.type.toLowerCase();
+      const extension = photoExtension(type);
+      const baseName = (file.name || 'fotografia').replace(/\.[^/.]+$/,'') || 'fotografia';
+      const optimizedFile = new File([blob], `${baseName}.${extension}`, {
+        type, lastModified:file.lastModified || Date.now()
+      });
+      return {file:optimizedFile, originalSize:file.size, uploadedSize:optimizedFile.size, optimized:true, width:outWidth, height:outHeight};
+    } finally {
+      if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+
   async function client(){
     if(state.client) return state.client;
     if(!window.supabase || !window.MIESPACIO_SUPABASE_ANON_KEY) return null;
@@ -527,11 +609,63 @@
 
   async function photosTool(m,s,box){
     const r=await state.client.rpc('admin_get_space_images',{p_space_id:s.id}); if(r.error){box.innerHTML=`<p class="message error">${esc(r.error.message)}</p>`;return;}
-    box.innerHTML=`<div class="upload-box"><input id="photoFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple><p>JPG, PNG o WebP. Puedes seleccionar varias imágenes.</p><button id="uploadPhotos" class="btn btn-dark">Subir fotografías</button></div><div class="photo-grid">${(r.data||[]).map((x,i)=>`<article class="photo-admin"><img src="${esc(x.image_url)}" alt="${esc(x.alt_text||s.name)}"><div><strong>${x.is_main?'Principal':'Fotografía '+(i+1)}</strong><p>${esc(x.alt_text||'Sin texto alternativo')}</p><div class="photo-actions">${!x.is_main?`<button class="btn btn-light" data-main="${x.id}">Hacer principal</button>`:''}<button class="btn btn-light" data-photo-edit="${x.id}">Editar</button><button class="btn btn-light" data-photo-delete="${x.id}" data-url="${esc(x.image_url)}">Eliminar</button></div></div></article>`).join('')||'<p class="muted">Todavía no hay fotografías.</p>'}</div><p class="admin-message"></p>`;
+    box.innerHTML=`<div class="upload-box"><input id="photoFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple><p>JPG, PNG o WebP. Se optimizan antes de subirlas (máximo 2.048 px y WebP cuando reduce el peso). Máximo original: 15 MB por foto.</p><button id="uploadPhotos" class="btn btn-dark">Subir fotografías</button></div><div class="photo-grid">${(r.data||[]).map((x,i)=>`<article class="photo-admin"><img loading="lazy" decoding="async" src="${esc(x.image_url)}" alt="${esc(x.alt_text||s.name)}"><div><strong>${x.is_main?'Principal':'Fotografía '+(i+1)}</strong><p>${esc(x.alt_text||'Sin texto alternativo')}</p><div class="photo-actions">${!x.is_main?`<button class="btn btn-light" data-main="${x.id}">Hacer principal</button>`:''}<button class="btn btn-light" data-photo-edit="${x.id}">Editar</button><button class="btn btn-light" data-photo-delete="${x.id}" data-url="${esc(x.image_url)}">Eliminar</button></div></div></article>`).join('')||'<p class="muted">Todavía no hay fotografías.</p>'}</div><p class="admin-message"></p>`;
     box.querySelector('#uploadPhotos').onclick=async()=>{
-      const files=[...box.querySelector('#photoFiles').files];if(!files.length){toast(box,'Selecciona al menos una imagen.',true);return;} const msg=box.querySelector('.admin-message');msg.textContent='Subiendo…';
-      for(const file of files){if(file.size>8*1024*1024){msg.textContent=`${file.name}: supera 8 MB.`;msg.classList.add('error');continue;} const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');const path=`${s.id}/${crypto.randomUUID()}.${ext}`;const up=await state.client.storage.from('space-images').upload(path,file,{cacheControl:'31536000',upsert:false,contentType:file.type});if(up.error){msg.textContent=up.error.message;msg.classList.add('error');continue;}const pub=state.client.storage.from('space-images').getPublicUrl(path).data.publicUrl;const row=await state.client.rpc('admin_add_space_image',{p_space_id:s.id,p_image_url:pub,p_alt_text:s.name,p_is_main:false,p_sort_order:999});if(row.error){await state.client.storage.from('space-images').remove([path]);msg.textContent=row.error.message;msg.classList.add('error');break;}}
-      msg.textContent='Fotografías procesadas.';await renderTool(m,s,'photos');
+      const input=box.querySelector('#photoFiles');
+      const files=[...(input?.files||[])];
+      if(!files.length){toast(box,'Selecciona al menos una imagen.',true);return;}
+      const button=box.querySelector('#uploadPhotos');
+      const msg=box.querySelector('.admin-message');
+      const uploaded=[], failures=[];
+      button.disabled=true;
+      button.textContent='Optimizando y subiendo…';
+      msg.classList.remove('error');
+      let totalBefore=0,totalAfter=0;
+
+      for(const file of files){
+        try{
+          msg.textContent=`Procesando ${file.name}…`;
+          const result=await optimizeSpacePhoto(file);
+          const imageFile=result.file;
+          const ext=photoExtension(imageFile.type);
+          const path=`${s.id}/${crypto.randomUUID()}.${ext}`;
+          const up=await state.client.storage.from('space-images').upload(path,imageFile,{
+            cacheControl:'31536000',upsert:false,contentType:imageFile.type
+          });
+          if(up.error) throw new Error(up.error.message);
+
+          const publicUrl=state.client.storage.from('space-images').getPublicUrl(path).data.publicUrl;
+          const row=await state.client.rpc('admin_add_space_image',{
+            p_space_id:s.id,p_image_url:publicUrl,p_alt_text:s.name,p_is_main:false,p_sort_order:999
+          });
+          if(row.error){
+            await state.client.storage.from('space-images').remove([path]);
+            throw new Error(row.error.message);
+          }
+          uploaded.push({name:file.name,before:result.originalSize,after:result.uploadedSize,optimized:result.optimized});
+          totalBefore+=result.originalSize;
+          totalAfter+=result.uploadedSize;
+        }catch(error){
+          failures.push(`${file.name}: ${error?.message||'no se ha podido subir'}`);
+        }
+      }
+
+      button.disabled=false;
+      button.textContent='Subir fotografías';
+      await renderTool(m,s,'photos');
+      const finalMsg=box.querySelector('.admin-message');
+      if(finalMsg){
+        const saved=Math.max(0,totalBefore-totalAfter);
+        const percent=totalBefore?Math.round(saved/totalBefore*100):0;
+        const summary=uploaded.length
+          ? `${uploaded.length} fotografía(s) subida(s). Peso total: ${photoSizeLabel(totalBefore)} → ${photoSizeLabel(totalAfter)} (${percent}% menos).`
+          : 'No se ha subido ninguna fotografía.';
+        finalMsg.textContent=failures.length
+          ? summary+` Errores: ${failures.join(' · ')}`
+          : summary;
+        finalMsg.classList.toggle('error',failures.length>0||uploaded.length===0);
+      }
+      input.value='';
     };
     box.querySelectorAll('[data-main]').forEach(b=>b.onclick=async()=>{const img=(r.data||[]).find(x=>x.id===b.dataset.main);if(!img)return;const u=await state.client.rpc('admin_update_space_image',{p_image_id:img.id,p_image_url:img.image_url,p_alt_text:img.alt_text||s.name,p_is_main:true,p_sort_order:img.sort_order||0});if(u.error){alert(u.error.message);return;}await renderTool(m,s,'photos');});
     box.querySelectorAll('[data-photo-edit]').forEach(b=>b.onclick=()=>editPhoto(m,s,(r.data||[]).find(x=>x.id===b.dataset.photoEdit)));
