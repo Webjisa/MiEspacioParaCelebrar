@@ -112,15 +112,15 @@ function renderEmail(type: string, recipientName: string, payload: any): {subjec
   const space = payload.space_name || 'el espacio';
   switch (type) {
     case 'customer_request_received':
-      return {subject:`Solicitud recibida - ${space}`,html:`<p style="line-height:1.7;">Hemos recibido correctamente tu solicitud para <strong>${esc(space)}</strong>. El propietario debe formalizarla dentro del plazo indicado.</p>${details(payload)}<p style="line-height:1.7;">Te enviaremos otro correo cuando la solicitud haya sido aceptada, rechazada o haya caducado.</p>`};
+      return {subject:`Solicitud recibida - ${space}`,html:`<p style="line-height:1.7;">Hemos recibido correctamente tu solicitud para <strong>${esc(space)}</strong>.</p>${details(payload)}<p style="line-height:1.7;"><strong>Importante:</strong> tu solicitud todavía no es una reserva confirmada. Ya se ha enviado al propietario para que la revise.</p><p style="line-height:1.7;">El propietario debe ponerse en contacto contigo para concretar los detalles y comunicarte si acepta o rechaza la solicitud. Cuando tome una decisión, recibirás otro correo electrónico con el resultado.</p><p style="line-height:1.7;">El plazo para tramitar la solicitud es de 72 horas. Si no se formaliza dentro de ese plazo, caducará.</p>`};
     case 'request_created':
       return {subject:`Nueva solicitud - ${space}`,html:ownerRequestHtml(payload,false)};
     case 'owner_pending_reminder':
       return {subject:`Recordatorio: solicitud pendiente - ${space}`,html:ownerRequestHtml(payload,true)};
     case 'customer_confirmed':
-      return {subject:`Reserva confirmada - ${space}`,html:`<p style="line-height:1.7;">Tu solicitud para <strong>${esc(space)}</strong> ha sido confirmada.</p>${details(payload)}<p style="line-height:1.7;">El propietario podrá contactar contigo para concretar la entrega de la llave y las condiciones acordadas.</p>`};
+      return {subject:`Reserva confirmada - ${space}`,html:`<p style="line-height:1.7;">El propietario ha aceptado tu solicitud para <strong>${esc(space)}</strong>. Tu reserva ha quedado confirmada.</p>${details(payload)}<p style="line-height:1.7;">El propietario podrá contactar contigo para concretar la entrega de la llave y los últimos detalles de la celebración.</p>`};
     case 'customer_not_processed':
-      return {subject:`Solicitud no procesada - ${space}`,html:`<p style="line-height:1.7;">Tu solicitud para <strong>${esc(space)}</strong> no ha sido aceptada y no se ha formalizado la reserva.</p>${details(payload)}`};
+      return {subject:`Solicitud rechazada - ${space}`,html:`<p style="line-height:1.7;">El propietario ha rechazado tu solicitud para <strong>${esc(space)}</strong>. La reserva no se ha confirmado.</p>${details(payload)}<p style="line-height:1.7;">Gracias por tu interés en el espacio.</p>`};
     case 'customer_expired':
       return {subject:`Solicitud caducada - ${space}`,html:`<p style="line-height:1.7;">La solicitud para <strong>${esc(space)}</strong> ha caducado porque no fue formalizada dentro del plazo establecido.</p>${details(payload)}`};
     case 'customer_cancelled':
