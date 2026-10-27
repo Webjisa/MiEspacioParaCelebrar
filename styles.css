@@ -1522,3 +1522,32 @@ body:not(.home-redesign) .decision-action:hover{background:#2c4939;border-color:
 body:not(.home-redesign) .decision-action[disabled]{opacity:.6;cursor:wait;transform:none}
 body:not(.home-redesign) .decision-action + .decision-action{margin-left:8px!important;border-color:#dfd4c7;background:#fffdfa;color:#26372e}
 body:not(.home-redesign) .decision-action + .decision-action:hover{background:#f5ebe1;border-color:#d2bda9}
+
+
+/* Ajuste solicitado: pasos de la portada sin numeración y alineados a la izquierda. */
+body.home-redesign .step-number{display:none!important}
+body.home-redesign .modern-step .step-top{gap:0;margin-left:0;justify-content:flex-start}
+body.home-redesign .modern-step:not(:last-child)::after{display:none!important}
+/* Se eliminan los arcos decorativos detrás del título y de las filas para limpiar la lectura. */
+body.home-redesign .steps-ornament{display:none!important}
+body.home-redesign .modern-section-heading{max-width:100%;text-align:left}
+body.home-redesign .modern-step{padding-left:0;padding-right:0}
+@media(max-width:560px){
+  body.home-redesign .modern-section-heading h2{
+    max-width:100%;font-size:clamp(27px,7.4vw,36px);line-height:1.08;
+    letter-spacing:-.06em;overflow-wrap:normal;word-break:normal
+  }
+  body.home-redesign .modern-section-heading h2 span{display:block}
+  body.home-redesign .modern-step{
+    grid-template-columns:62px minmax(0,1fr);
+    column-gap:13px;width:100%;min-width:0
+  }
+  body.home-redesign .modern-step .step-top{
+    grid-row:1/3;grid-column:1;justify-content:flex-start;align-self:center;
+    margin:0;gap:0;min-width:0
+  }
+  body.home-redesign .modern-step .step-icon{width:54px;height:54px}
+  body.home-redesign .modern-step .step-icon svg{width:24px;height:24px}
+  body.home-redesign .modern-step h3,
+  body.home-redesign .modern-step p{grid-column:2;min-width:0;overflow-wrap:break-word}
+}
