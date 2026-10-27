@@ -7,13 +7,14 @@
 <link rel="stylesheet" href="styles.css?v=20261027-6">
 <script src="supabase-config.js?v=final"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
+<script src="turnstile-auth.js?v=20261027-1"></script>
 </head>
 <body>
 <header class="site-header"><div class="container nav"><a class="brand" href="index.html" aria-label="MiEspacioParaCelebrar"><img class="brand-logo" src="assets/logo-miespacio-v12.png" alt="MiEspacio Para Celebrar"></a><nav><a href="espacios.html">Espacios</a><a href="como-funciona.html">Cómo funciona</a><a href="disponibilidad.html">Consultar disponibilidad</a><a href="acceso.html">Área privada</a></nav></div></header>
 <main>
 <section class="page-intro"><div class="container"><p class="eyebrow">ÁREA PRIVADA</p><h1>Restablecer contraseña</h1><p>Solicita un enlace para recuperar el acceso o establece una nueva contraseña si ya has abierto el enlace.</p></div></section>
 <section class="section"><div class="container login-wrap">
-<form id="requestForm" class="booking-card login-card"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required><button class="btn btn-dark full" type="submit">Enviar enlace</button><p id="requestMessage" class="message" aria-live="polite"></p></form>
+<form id="requestForm" class="booking-card login-card"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required><div id="resetTurnstile" class="turnstile-container" aria-label="Verificación de seguridad"></div><button class="btn btn-dark full" type="submit">Enviar enlace</button><p id="requestMessage" class="message" aria-live="polite"></p></form>
 <form id="passwordForm" class="booking-card login-card" style="display:none"><label for="newPassword">Nueva contraseña</label><input id="newPassword" type="password" minlength="6" autocomplete="new-password" required><label for="newPassword2">Repite la contraseña</label><input id="newPassword2" type="password" minlength="6" autocomplete="new-password" required><button class="btn btn-dark full" type="submit">Guardar contraseña</button><p id="passwordMessage" class="message" aria-live="polite"></p></form>
 </div></section>
 </main>
@@ -22,10 +23,57 @@
 (async()=>{
  const c=window.supabase.createClient('https://hvuseljtqdgekotrsiwd.supabase.co',window.MIESPACIO_SUPABASE_ANON_KEY);
  const req=document.querySelector('#requestForm'), pass=document.querySelector('#passwordForm');
+ const reqMsg=document.querySelector('#requestMessage');
  const {data:{session}}=await c.auth.getSession();
+ let captchaToken='',widgetId=null;
  if(session){req.style.display='none';pass.style.display='block';}
- req.addEventListener('submit',async e=>{e.preventDefault();const msg=document.querySelector('#requestMessage');msg.classList.remove('error');msg.textContent='Enviando…';const {error}=await c.auth.resetPasswordForEmail(document.querySelector('#email').value.trim(),{redirectTo:'https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html'});if(error){msg.textContent='No se ha podido enviar el enlace. Comprueba el email e inténtalo de nuevo.';msg.classList.add('error');return;}msg.textContent='Si el email corresponde a una cuenta, recibirás un enlace para restablecer la contraseña.';});
- pass.addEventListener('submit',async e=>{e.preventDefault();const msg=document.querySelector('#passwordMessage');const p=document.querySelector('#newPassword').value,p2=document.querySelector('#newPassword2').value;msg.classList.remove('error');if(p.length<6){msg.textContent='La contraseña debe tener al menos 6 caracteres.';msg.classList.add('error');return;}if(p!==p2){msg.textContent='Las contraseñas no coinciden.';msg.classList.add('error');return;}msg.textContent='Guardando…';const {error}=await c.auth.updateUser({password:p});if(error){msg.textContent=error.message;msg.classList.add('error');return;}msg.textContent='Contraseña actualizada. Accediendo…';setTimeout(()=>location.href='area-privada.html',500);});
+ else{
+   try{
+     widgetId=await window.MIESPACIO_TURNSTILE.render(document.querySelector('#resetTurnstile'),token=>{captchaToken=token;});
+   }catch(error){
+     console.error('Error cargando Turnstile:',error);
+     reqMsg.textContent='No se ha podido cargar la verificación de seguridad. Comprueba tu conexión e inténtalo de nuevo.';
+     reqMsg.classList.add('error');
+   }
+ }
+ req.addEventListener('submit',async e=>{
+   e.preventDefault();
+   const msg=document.querySelector('#requestMessage');
+   msg.classList.remove('error');
+   if(!captchaToken){msg.textContent='Completa la verificación de seguridad antes de solicitar el enlace.';msg.classList.add('error');return;}
+   const tokenForRequest=captchaToken;
+   captchaToken='';
+   msg.textContent='Enviando…';
+   let error=null;
+   try{
+     const result=await c.auth.resetPasswordForEmail(document.querySelector('#email').value.trim(),{
+       redirectTo:'https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html',
+       captchaToken:tokenForRequest
+     });
+     error=result.error;
+   }catch(requestError){error=requestError;}
+   window.MIESPACIO_TURNSTILE.reset(widgetId,token=>{captchaToken=token;});
+   if(error){
+     console.error('Error solicitando la recuperación:',error);
+     msg.textContent=/captcha/i.test(String(error.message||''))?'No se ha podido verificar la solicitud. Espera a que la verificación se renueve e inténtalo de nuevo.':'No se ha podido enviar el enlace. Comprueba el email e inténtalo de nuevo.';
+     msg.classList.add('error');
+     return;
+   }
+   msg.textContent='Si el email corresponde a una cuenta, recibirás un enlace para restablecer la contraseña.';
+ });
+ pass.addEventListener('submit',async e=>{
+   e.preventDefault();
+   const msg=document.querySelector('#passwordMessage');
+   const p=document.querySelector('#newPassword').value,p2=document.querySelector('#newPassword2').value;
+   msg.classList.remove('error');
+   if(p.length<6){msg.textContent='La contraseña debe tener al menos 6 caracteres.';msg.classList.add('error');return;}
+   if(p!==p2){msg.textContent='Las contraseñas no coinciden.';msg.classList.add('error');return;}
+   msg.textContent='Guardando…';
+   const {error}=await c.auth.updateUser({password:p});
+   if(error){msg.textContent=error.message;msg.classList.add('error');return;}
+   msg.textContent='Contraseña actualizada. Accediendo…';
+   setTimeout(()=>location.href='area-privada.html',500);
+ });
 })();
 </script>
 <script src="mobile-menu.js?v=20261027-3"></script>
