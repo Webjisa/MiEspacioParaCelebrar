@@ -785,3 +785,25 @@ body:has(#privateArea) .site-header .nav>nav a[hidden]{display:none!important}
   .photo-admin{grid-template-columns:1fr!important}
   .photo-admin>img{height:auto!important;aspect-ratio:16/10!important}
 }
+
+/* Espacios sin fotografías: nunca reutilizar la imagen de otro local. */
+.space-photo-placeholder{
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--soft);
+  color:var(--muted);
+  text-align:center;
+  font-size:14px;
+  font-weight:700;
+}
+.space-photo-placeholder span{
+  padding:10px 16px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:rgba(255,255,255,.68);
+}
+.space-detail-image .space-photo-placeholder-hero{position:absolute;inset:0}
+.space-detail-image.no-photo:after{background:transparent}
