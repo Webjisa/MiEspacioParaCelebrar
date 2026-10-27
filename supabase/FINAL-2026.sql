@@ -569,7 +569,7 @@ update public.spaces
 set latitude=37.417400,longitude=-4.485511,
     admin_enabled=true,
     owner_active=coalesce(owner_active,active,true)
-where id='340c371d-e09b-4a59-bfaa-343d7509a35c';
+where id='4e8065b1-876e-46b3-9d60-53bf660975a9';
 
 
 -- ============================================================
