@@ -394,33 +394,27 @@ function initCompactPublicUI(){
     if(nav){
       nav.classList.add('public-nav');
       let links=[...nav.querySelectorAll('a')];
-      if(isAdminPage){
-        links.forEach(a=>{a.hidden=!/área\s+privada/i.test(a.textContent||'');});
-      }else{
-        links.forEach(a=>{a.hidden=false;});
-        const hasDate=links.some(a=>/consulta\s+tu\s+fecha/i.test(a.textContent||''));
-        if(!hasDate){
-          const a=document.createElement('a');
-          a.href='disponibilidad.html';
-          a.textContent='Consulta tu fecha';
-          const privateLink=links.find(x=>/área\s+privada/i.test(x.textContent||''));
-          if(privateLink) nav.insertBefore(a,privateLink); else nav.appendChild(a);
-        }
-        if(isOwnerPage&&!links.some(a=>/área\s+privada/i.test(a.textContent||''))){
-          const a=document.createElement('a');
-          a.href='area-privada.html';
-          a.textContent='Área privada';
-          nav.appendChild(a);
-        }
-        links=[...nav.querySelectorAll('a')];
-        const currentFile=path.split('/').pop()||'index.html';
-        links.forEach(a=>{
-          const href=String(a.getAttribute('href')||'').split(/[?#]/)[0].split('/').pop().toLowerCase();
-          const active=href===currentFile||(currentFile==='espacio.html'&&href==='espacios.html');
-          a.classList.toggle('active',active);
-          if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
-        });
+      // En el área privada y en el panel de administración se mantienen
+      // los enlaces públicos; solo cambia el enlace que se marca como activo.
+      links.forEach(a=>{a.hidden=false;});
+      let hasDate=links.some(a=>/consulta\s+tu\s+fecha/i.test(a.textContent||''));
+      if(!hasDate){
+        const a=document.createElement('a');
+        a.href='disponibilidad.html';
+        a.textContent='Consulta tu fecha';
+        const privateLink=links.find(x=>/área\s+privada/i.test(x.textContent||''));
+        if(privateLink)nav.insertBefore(a,privateLink);else nav.appendChild(a);
       }
+      links=[...nav.querySelectorAll('a')];
+      const currentFile=path.split('/').pop()||'index.html';
+      links.forEach(a=>{
+        const href=String(a.getAttribute('href')||'').split(/[?#]/)[0].split('/').pop().toLowerCase();
+        const active=href===currentFile
+          ||(currentFile==='espacio.html'&&href==='espacios.html')
+          ||(isAdminPage&&href==='area-privada.html');
+        a.classList.toggle('active',active);
+        if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+      });
       let toggle=header.querySelector('.mobile-menu-toggle');
       if(!toggle){
         toggle=document.createElement('button');
