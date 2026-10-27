@@ -1,6 +1,13 @@
 (async()=>{
  const start=document.querySelector('#generalStart'),end=document.querySelector('#generalEnd'),cal=document.querySelector('#generalCalendar'),msg=document.querySelector('#availabilityMessage'),results=document.querySelector('#availabilityResults');
  const spaces=await getPublicSpaces(); const maps=new Map(); for(const s of spaces) maps.set(s.id,await getUnavailableDates(s.id));
+ if([...maps.values()].some(map=>map.loadError)){
+   msg.textContent='No se ha podido comprobar la disponibilidad. Recarga la página para intentarlo de nuevo.';
+   document.querySelector('#searchAvailability').disabled=true;
+   cal.hidden=true;
+   results.innerHTML='<div class="empty-state"><p>No podemos mostrar espacios disponibles hasta comprobar las fechas ocupadas.</p></div>';
+   return;
+ }
  const today=localISODate(); let state={start:'',end:'',year:new Date().getFullYear(),month:new Date().getMonth()+1,target:'generalStart',open:false};
  const availableFor=iso=>spaces.some(s=>!maps.get(s.id)?.has(iso));
  const set=(el,iso)=>{el.value=displayDate(iso);el.dataset.iso=iso;};
