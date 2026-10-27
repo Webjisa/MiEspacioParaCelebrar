@@ -2,7 +2,7 @@
 
 ## Resultado general
 
-Se ha revisado el recorrido de reserva, se han sincronizado tres Edge Functions con GitHub y se han aplicado varias correcciones SQL en producción. El SQL consolidado se ha actualizado. No se crearon reservas nuevas ni se enviaron correos de prueba a clientes durante esta revisión.
+Se ha revisado el recorrido de reserva, se han sincronizado cinco Edge Functions activas con GitHub y se han aplicado varias correcciones SQL en producción. El SQL consolidado se ha actualizado. No se crearon reservas nuevas ni se enviaron correos de prueba a clientes durante esta revisión.
 
 ## Comprobaciones superadas
 
@@ -11,7 +11,9 @@ Se ha revisado el recorrido de reserva, se han sincronizado tres Edge Functions 
 | Sincronización de fuentes | OK | `supabase/functions/email-worker/index.ts` coincide con `email-worker` desplegada (versión 17). |
 | Sincronización de fuentes | OK | `supabase/functions/booking-action/index.ts` coincide con `booking-action` desplegada (versión 3). |
 | Sincronización de fuentes | OK | `supabase/functions/create-owner/index.ts` coincide con `create-owner` desplegada (versión 12); la diferencia encontrada era solo de comentarios. |
-| Revisión de secretos | OK estático | Los tres archivos sincronizados leen credenciales desde el entorno o las aporta el contexto autenticado; no se han encontrado claves privadas pegadas en el código fuente. |
+| Sincronización de fuentes | OK | `supabase/functions/resend-owner-invitation/index.ts` guarda el código de la función desplegada (versión 11). |
+| Sincronización de fuentes | OK | `supabase/functions/festivos-sync/index.ts` guarda el código del sincronizador desplegado (versión 16). |
+| Revisión de secretos | OK estático | Los cinco archivos sincronizados leen credenciales desde el entorno o las aporta el contexto autenticado; no se han encontrado claves privadas pegadas en el código fuente. |
 | Integración de correo | OK | `email-worker` exige POST y el encabezado secreto `x-cron-secret`, reclama lotes de `email_queue` y envía a través de Brevo. |
 | Integración de decisiones | OK | `decidir-reserva.html` envía `{token, action}` por POST a `booking-action`; el backend valida el token/acción y llama al RPC desde servidor. |
 | Formulario de reserva | OK estático | `app.js` llama a `create_booking_request` y consulta rangos no disponibles con `get_space_unavailable_ranges`. |
@@ -37,7 +39,7 @@ Estas pruebas requieren interactuar con la web en un navegador con datos y sesi�
 5. Completar una invitación de propietario, establecer contraseña y probar el restablecimiento de contraseña.
 6. Hacer una revisión visual de móvil en portada, búsqueda, ficha, formulario, área privada y administración.
 
-No se han usado reservas ni datos personales de clientes reales para estas comprobaciones. No se debe desplegar la antigua `process-email-queue` sobre `email-worker`: la primera es una integración heredada con Resend.
+No se han usado reservas ni datos personales de clientes reales para estas comprobaciones. No se deben desplegar `process-email-queue`, `send-survey` ni `expire-bookings` sin una revisión específica: son fuentes heredadas que no figuran como funciones activas del proyecto. Tampoco se debe desplegar `process-email-queue` sobre `email-worker`: la primera es una integración heredada con Resend.
 
 ## Publicación
 
