@@ -2,7 +2,7 @@
 -- 🗂️ GUARDAR — FINAL-2026.sql
 -- ▶️ EJECUTAR UNA SOLA VEZ en Supabase SQL Editor.
 -- Esta es la migración consolidada de la versión definitiva.
--- No contiene contraseñas, claves service_role ni claves de Resend.
+-- No contiene contraseñas, claves service_role ni claves de proveedores de correo.
 
 create extension if not exists pgcrypto;
 
