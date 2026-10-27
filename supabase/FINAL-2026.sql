@@ -949,36 +949,285 @@ revoke all on function public.get_owner_space_detail(uuid) from public,anon; gra
 -- ============================================================
 -- 25. MODIFICACIÓN DE RESERVAS CONFIRMADAS POR EL PROPIETARIO
 -- ============================================================
-create or replace function public.owner_update_booking(
- p_booking_id uuid,p_start_date date,p_end_date date,p_cleaning_requested boolean,p_selected_services jsonb default '[]'::jsonb,p_customer_notes text default null
-) returns void language plpgsql security definer set search_path=public,private as $$
-declare
- b public.bookings%rowtype; s public.spaces%rowtype; x jsonb; sid uuid; sname text; sprice numeric; services jsonb:='[]'::jsonb; service_total numeric:=0;
- week numeric; fri numeric; sat numeric; sun numeric; dep numeric; ca boolean; cp numeric; rental numeric:=0; clean numeric:=0; d date; owner_email text; owner_name text;
-begin
- if not private.is_owner() then raise exception 'No tienes permisos'; end if;
- select * into b from public.bookings where id=p_booking_id for update;
- select * into s from public.spaces where id=b.space_id;
- if s.owner_id<>private.current_owner_id() then raise exception 'No tienes permisos sobre esta reserva'; end if;
- if b.booking_status<>'confirmed' then raise exception 'Solo se pueden modificar reservas confirmadas'; end if;
- if p_start_date is null or p_end_date<p_start_date then raise exception 'Rango de fechas no válido'; end if;
- if p_start_date < current_date then raise exception 'No se pueden modificar fechas ya iniciadas'; end if;
- if exists(select 1 from public.bookings z where z.id<>b.id and z.space_id=b.space_id and z.booking_status in ('pending','confirmed') and z.start_date<=p_end_date and z.end_date>=p_start_date) then raise exception 'Las nuevas fechas no están disponibles'; end if;
- if exists(select 1 from public.blocked_dates z where z.space_id=b.space_id and z.start_date<=p_end_date and z.end_date>=p_start_date) then raise exception 'Las nuevas fechas no están disponibles'; end if;
- select weekday_price,friday_price,saturday_price,sunday_price,deposit,cleaning_available,cleaning_price into week,fri,sat,sun,dep,ca,cp from public.spaces where id=s.id;
- if p_cleaning_requested and not ca then raise exception 'El servicio de limpieza no está disponible'; end if;
- for d in select generate_series(p_start_date,p_end_date,interval '1 day')::date loop rental:=rental+coalesce(case extract(isodow from d)::int when 5 then fri when 6 then sat when 7 then sun else week end,0); end loop;
- if p_cleaning_requested then clean:=coalesce(cp,0); end if;
- for x in select value from jsonb_array_elements(coalesce(p_selected_services,'[]'::jsonb)) loop
-   sid:=(x->>'id')::uuid;
-   select sc.name,ss.price into sname,sprice from public.space_services ss join public.service_catalog sc on sc.id=ss.service_id where ss.id=sid and ss.space_id=s.id and ss.active=true and ss.included=false and sc.active=true;
-   if not found then raise exception 'Uno de los servicios seleccionados ya no está disponible'; end if;
-   service_total:=service_total+coalesce(sprice,0); services:=services||jsonb_build_array(jsonb_build_object('id',sid,'name',sname,'price',sprice));
- end loop;
- update public.bookings set start_date=p_start_date,end_date=p_end_date,total_days=(p_end_date-p_start_date)+1,cleaning_requested=coalesce(p_cleaning_requested,false),customer_notes=nullif(btrim(p_customer_notes),''),pricing_snapshot=jsonb_build_object('rental_total',round(rental,2),'cleaning_total',round(clean,2),'services_total',round(service_total,2),'deposit',round(coalesce(dep,0),2),'grand_total',round(rental+clean+service_total+coalesce(dep,0),2)),services_snapshot=services,updated_at=now() where id=b.id;
- perform public.final_queue_email('reservas','customer_updated',b.customer_email,b.customer_name,jsonb_build_object('booking_id',b.id,'space_name',s.name,'start_date',p_start_date,'end_date',p_end_date),b.id,s.id);
- perform public.final_queue_email('reservas','owner_booking_final','miespacioparacelebrar@gmail.com','Administración',jsonb_build_object('booking_id',b.id,'space_name',s.name,'customer_name',b.customer_name,'status','updated','comment','Reserva modificada por el propietario'),b.id,s.id);
-end; $$;
+CREATE OR REPLACE FUNCTION public.owner_update_booking(p_booking_id uuid, p_start_date date, p_end_date date, p_cleaning_requested boolean, p_selected_services jsonb DEFAULT '[]'::jsonb, p_customer_notes text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
+DECLARE
+    b public.bookings%rowtype;
+    s public.spaces%rowtype;
+
+    x jsonb;
+    sid uuid;
+    sname text;
+    sprice numeric;
+
+    services jsonb := '[]'::jsonb;
+    service_total numeric := 0;
+
+    week numeric;
+    fri numeric;
+    sat numeric;
+    sun numeric;
+    dep numeric;
+    ca boolean;
+    cp numeric;
+
+    rental numeric := 0;
+    clean numeric := 0;
+
+    d date;
+
+    owner_email text;
+    owner_name text;
+BEGIN
+
+    IF NOT private.is_owner()
+       AND NOT private.is_admin()
+    THEN
+        RAISE EXCEPTION 'No tienes permisos';
+    END IF;
+
+
+    SELECT *
+    INTO b
+    FROM public.bookings
+    WHERE id = p_booking_id
+    FOR UPDATE;
+
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Reserva no encontrada';
+    END IF;
+
+
+    -- BLOQUEO DEL ESPACIO ANTES DE COMPROBAR FECHAS
+
+    SELECT *
+    INTO s
+    FROM public.spaces
+    WHERE id = b.space_id
+    FOR UPDATE;
+
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'El espacio no existe';
+    END IF;
+
+
+    IF private.is_owner()
+       AND s.owner_id <> private.current_owner_id()
+    THEN
+        RAISE EXCEPTION 'No tienes permisos sobre esta reserva';
+    END IF;
+
+
+    IF b.booking_status <> 'confirmed' THEN
+        RAISE EXCEPTION 'Solo se pueden modificar reservas confirmadas';
+    END IF;
+
+
+    IF p_start_date IS NULL
+       OR p_end_date IS NULL
+       OR p_end_date < p_start_date
+    THEN
+        RAISE EXCEPTION 'Rango de fechas no válido';
+    END IF;
+
+
+    IF p_start_date < current_date THEN
+        RAISE EXCEPTION 'No se pueden modificar fechas ya iniciadas';
+    END IF;
+
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.bookings z
+        WHERE z.id <> b.id
+          AND z.space_id = b.space_id
+          AND z.booking_status IN ('pending','confirmed')
+          AND z.start_date <= p_end_date
+          AND z.end_date >= p_start_date
+    )
+    THEN
+        RAISE EXCEPTION 'Las nuevas fechas no están disponibles';
+    END IF;
+
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.blocked_dates z
+        WHERE z.space_id = b.space_id
+          AND z.start_date <= p_end_date
+          AND z.end_date >= p_start_date
+    )
+    THEN
+        RAISE EXCEPTION 'Las nuevas fechas no están disponibles';
+    END IF;
+
+
+    SELECT
+        weekday_price,
+        friday_price,
+        saturday_price,
+        sunday_price,
+        deposit,
+        cleaning_available,
+        cleaning_price
+    INTO
+        week,
+        fri,
+        sat,
+        sun,
+        dep,
+        ca,
+        cp
+    FROM public.spaces
+    WHERE id = s.id;
+
+
+    IF p_cleaning_requested AND NOT ca THEN
+        RAISE EXCEPTION 'El servicio de limpieza no está disponible';
+    END IF;
+
+
+    FOR d IN
+        SELECT generate_series(
+            p_start_date,
+            p_end_date,
+            interval '1 day'
+        )::date
+    LOOP
+
+        rental := rental + public.get_space_price_for_date(s.id,d);
+
+    END LOOP;
+
+
+    IF p_cleaning_requested THEN
+        clean := coalesce(cp,0);
+    END IF;
+
+
+    FOR x IN
+        SELECT value
+        FROM jsonb_array_elements(
+            coalesce(p_selected_services,'[]'::jsonb)
+        )
+    LOOP
+
+        sid := (x->>'id')::uuid;
+
+        SELECT
+            sc.name,
+            ss.price
+        INTO
+            sname,
+            sprice
+        FROM public.space_services ss
+        JOIN public.service_catalog sc
+            ON sc.id = ss.service_id
+        WHERE ss.id = sid
+          AND ss.space_id = s.id
+          AND ss.active = true
+          AND ss.included = false
+          AND sc.active = true;
+
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION
+                'Uno de los servicios seleccionados ya no está disponible';
+        END IF;
+
+
+        service_total :=
+            service_total + coalesce(sprice,0);
+
+        services :=
+            services ||
+            jsonb_build_array(
+                jsonb_build_object(
+                    'id', sid,
+                    'name', sname,
+                    'price', sprice
+                )
+            );
+
+    END LOOP;
+
+
+    UPDATE public.bookings
+    SET
+        start_date = p_start_date,
+        end_date = p_end_date,
+        total_days = (p_end_date - p_start_date) + 1,
+        cleaning_requested = coalesce(
+            p_cleaning_requested,
+            false
+        ),
+        customer_notes =
+            nullif(btrim(p_customer_notes),''),
+        pricing_snapshot =
+            jsonb_build_object(
+                'rental_total', round(rental,2),
+                'cleaning_total', round(clean,2),
+                'services_total', round(service_total,2),
+                'deposit', round(coalesce(dep,0),2),
+                'grand_total',
+                    round(
+                        rental
+                        + clean
+                        + service_total
+                        + coalesce(dep,0),
+                        2
+                    )
+            ),
+        services_snapshot = services,
+        updated_at = now()
+    WHERE id = b.id;
+
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        'customer_updated',
+        b.customer_email,
+        b.customer_name,
+        jsonb_build_object(
+            'booking_id', b.id,
+            'space_name', s.name,
+            'start_date', p_start_date,
+            'end_date', p_end_date
+        ),
+        b.id,
+        s.id
+    );
+
+
+    PERFORM public.final_queue_email(
+        'reservas',
+        'owner_booking_final',
+        'miespacioparacelebrar@gmail.com',
+        'Administración',
+        jsonb_build_object(
+            'booking_id', b.id,
+            'space_name', s.name,
+            'customer_name', b.customer_name,
+            'status', 'updated',
+            'comment',
+                CASE
+                    WHEN private.is_admin()
+                    THEN 'Reserva modificada por el administrador'
+                    ELSE 'Reserva modificada por el propietario'
+                END
+        ),
+        b.id,
+        s.id
+    );
+
+END;
+$function$;
 revoke all on function public.owner_update_booking(uuid,date,date,boolean,jsonb,text) from public,anon; grant execute on function public.owner_update_booking(uuid,date,date,boolean,jsonb,text) to authenticated;
 
 -- ============================================================
