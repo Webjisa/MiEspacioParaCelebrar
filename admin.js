@@ -582,7 +582,7 @@
       </div>
     </article>`;
 
-    const groupCard=(name,items)=>`article class="service-group-card" style="border:1px solid #d8d8d8;border-radius:20px;padding:20px;margin-bottom:16px;background:#fafafa;">
+    const groupCard=(name,items)=>`<article class="service-group-card" style="border:1px solid #d8d8d8;border-radius:20px;padding:20px;margin-bottom:16px;background:#fafafa;">
       <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;">
         <div>
           <p class="eyebrow" style="margin:0 0 5px;">GRUPO DE OPCIONES</p>
