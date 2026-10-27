@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>MiEspacio Para Celebrar</title>
+  <rect width="512" height="512" fill="#fbf6f0"/>
+  <path d="M0 0H280C266 68 222 103 151 135 82 166 43 207 0 274Z" fill="#f1ddca"/>
+  <path d="M0 104C32 128 38 178 13 224L0 246Z" fill="#9aa489"/>
+  <path d="M0 371C88 342 135 386 210 414S315 459 364 512H0Z" fill="#c46d51"/>
+  <path d="M62 299C72 231 108 170 174 154c54-13 79 19 123 35 41 15 98 17 139 51 40 33 49 81 20 123-31 43-91 41-135 32-59-12-86 5-130 25-61 28-128-5-129-69Z" fill="#cbd1bf"/>
+  <g fill="none" stroke="#172820" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M53 202C81 149 102 106 133 62"/>
+    <path d="M73 171C49 128 53 85 85 45 103 93 99 135 73 171Z" fill="#a9b397" stroke-width="5"/>
+    <path d="M84 145C94 96 128 63 177 49 158 100 124 133 84 145Z" fill="#bfc9b0" stroke-width="5"/>
+    <path d="M373 83l-7 28M396 72v29M421 84l-15 21" stroke="#172820" stroke-width="8"/>
+  </g>
+  <g fill="#172820" text-anchor="middle" font-family="'Segoe Print','Comic Sans MS',cursive" font-style="italic" font-weight="900">
+    <text x="256" y="254" font-size="70" letter-spacing="-3">MiEspacio</text>
+    <text x="256" y="322" font-size="55" letter-spacing="-2.5">ParaCelebrar</text>
+  </g>
+  <path d="M176 347c48 10 109 10 160-2" fill="none" stroke="#a84f37" stroke-width="4" stroke-linecap="round" opacity=".75"/>
+</svg>
