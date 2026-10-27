@@ -33,7 +33,7 @@ export default {
         );
       }
 
-      // Comprobar que quien realiza la operación es administrador
+      // Comprobar que quien realiza la operación es un administrador
       const { data: adminProfile, error: adminProfileError } =
         await ctx.supabaseAdmin
           .from("profiles")
@@ -83,8 +83,8 @@ export default {
       }
 
       // Crear usuario mediante invitación.
-      // El propietario recibirá un correo y establecerá
-      // personalmente su contraseña.
+      // Supabase enviará al propietario el correo para activar su cuenta
+      // y establecer su propia contraseña.
       const { data: authData, error: authError } =
         await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(email, {
           redirectTo:
@@ -134,8 +134,8 @@ export default {
           ownerError,
         );
 
-        // Si falla la creación del propietario,
-        // eliminar también el usuario Auth creado.
+        // Si falla la creación del propietario, eliminar
+        // también el usuario Auth que acabamos de crear.
         await ctx.supabaseAdmin.auth.admin.deleteUser(newUserId);
 
         return Response.json(
