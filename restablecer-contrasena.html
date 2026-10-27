@@ -28,5 +28,6 @@
  pass.addEventListener('submit',async e=>{e.preventDefault();const msg=document.querySelector('#passwordMessage');const p=document.querySelector('#newPassword').value,p2=document.querySelector('#newPassword2').value;msg.classList.remove('error');if(p.length<6){msg.textContent='La contraseña debe tener al menos 6 caracteres.';msg.classList.add('error');return;}if(p!==p2){msg.textContent='Las contraseñas no coinciden.';msg.classList.add('error');return;}msg.textContent='Guardando…';const {error}=await c.auth.updateUser({password:p});if(error){msg.textContent=error.message;msg.classList.add('error');return;}msg.textContent='Contraseña actualizada. Accediendo…';setTimeout(()=>location.href='area-privada.html',500);});
 })();
 </script>
+<script src="mobile-menu.js?v=20261027-1"></script>
 </body>
 </html>
