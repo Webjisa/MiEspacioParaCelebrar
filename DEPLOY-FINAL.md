@@ -1,6 +1,6 @@
 # MiEspacioParaCelebrar — versión definitiva 2026
 
-> **Despliegue vigente (28-10-2026):** la web pública se sirve desde Cloudflare Worker: https://miespacioparacelebrar.jisaweb.workers.dev/. GitHub Pages está despublicado y no debe reactivarse. Las funciones de Supabase de invitaciones y correo transaccional están desplegadas en las versiones `create-owner 13`, `resend-owner-invitation 12` y `email-worker 19`. Tras modificar archivos del frontend, comprueba la publicación en Cloudflare y la carga de recursos antes de darla por terminada.
+> **Despliegue vigente (28-10-2026):** la web pública se sirve desde Cloudflare Worker: https://miespacioparacelebrar.jisaweb.workers.dev/. GitHub Pages está despublicado y no debe reactivarse. Las funciones de Supabase de invitaciones y correo transaccional están desplegadas en las versiones `create-owner 13`, `resend-owner-invitation 12` y `email-worker 20`. Tras modificar archivos del frontend, comprueba la publicación en Cloudflare y la carga de recursos antes de darla por terminada.
 
 ## Orden exacto de puesta en marcha
 
