@@ -1932,3 +1932,16 @@ body.home-redesign .site-header.home-modern-header{
   backdrop-filter:blur(14px)!important;
   -webkit-backdrop-filter:blur(14px)!important;
 }
+
+
+/* FIX móvil: la cabecera común no debe forzar el menú desplegado permanentemente. */
+@media (max-width:850px){
+  .site-header .container.nav>nav,
+  body.home-redesign .site-header.home-modern-header .container.nav>nav.home-nav{
+    display:none!important;
+  }
+  .site-header .container.nav>nav.mobile-open,
+  body.home-redesign .site-header.home-modern-header .container.nav>nav.home-nav.mobile-open{
+    display:flex!important;
+  }
+}
