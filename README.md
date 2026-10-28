@@ -4,7 +4,7 @@ Portal web para consultar espacios privados de celebración y enviar solicitudes
 
 ## Arquitectura
 
-- Frontend estático: GitHub Pages.
+- Frontend estático: Cloudflare Worker (`https://miespacioparacelebrar.jisaweb.workers.dev/`). GitHub conserva el código fuente; GitHub Pages no es el destino público.
 - Datos, autenticación, RLS y RPC: Supabase.
 - Correo transaccional desplegado: Brevo mediante la Edge Function `email-worker`, invocada por un cron de Supabase.
 - Mapas: Leaflet/OpenStreetMap.
@@ -52,9 +52,11 @@ No guardar secretos en el frontend ni en GitHub. La service role key de Supabase
 
 ## Publicación y sincronización de producción
 
-El frontend se publica en GitHub Pages y la lógica sensible se ejecuta en Supabase. El 27-10-2026 se recuperó el código desplegado de las dos Edge Functions activas y se versionó en el repositorio:
-- `supabase/functions/email-worker/index.ts` — función activa (versión desplegada 16), envío mediante Brevo.
-- `supabase/functions/booking-action/index.ts` — función activa (versión desplegada 3), consumo seguro del token para aceptar o rechazar solicitudes.
+La web pública se sirve desde Cloudflare Worker y la lógica sensible se ejecuta en Supabase. En la auditoría del 28-10-2026 se corrigieron y desplegaron los enlaces transaccionales para usar el dominio de producción. Versiones activas verificadas:
+- `supabase/functions/email-worker/index.ts` — versión desplegada 19, envío mediante Brevo y enlaces al dominio Worker.
+- `supabase/functions/create-owner/index.ts` — versión desplegada 13, invitación/activación al dominio Worker.
+- `supabase/functions/resend-owner-invitation/index.ts` — versión desplegada 12, reenvío de invitación al dominio Worker.
+- `supabase/functions/booking-action/index.ts` — versión desplegada 3, procesa el token de decisión de reserva.
 
 Los archivos se copiaron desde Supabase a GitHub sin incluir claves API ni secretos. Esta sincronización de fuentes no vuelve a desplegar ni modifica las funciones en producción.
 
