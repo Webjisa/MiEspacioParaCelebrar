@@ -1,5 +1,7 @@
 # MiEspacioParaCelebrar — versión definitiva 2026
 
+> **Despliegue vigente (28-10-2026):** la web pública se sirve desde Cloudflare Worker: https://miespacioparacelebrar.jisaweb.workers.dev/. GitHub Pages está despublicado y no debe reactivarse. Las funciones de Supabase de invitaciones y correo transaccional están desplegadas en las versiones `create-owner 13`, `resend-owner-invitation 12` y `email-worker 19`. Tras modificar archivos del frontend, comprueba la publicación en Cloudflare y la carga de recursos antes de darla por terminada.
+
 ## Orden exacto de puesta en marcha
 
 ### 1. Sustituir el contenido del repositorio
@@ -8,7 +10,7 @@
 2. En el repositorio de GitHub elimina los archivos de la versión anterior.
 3. Sube el contenido de esta carpeta, manteniendo `index.html` en la raíz.
 4. No cambies los nombres de la carpeta `assets/` ni `display-nfc/`.
-5. Comprueba que GitHub Pages sigue publicado desde la rama/carpeta configurada actualmente.
+5. Comprueba en Cloudflare Workers & Pages que el Worker de producción está activo y que el último despliegue ha terminado correctamente. No uses GitHub Pages como destino público.
 
 La versión pública sigue siendo una web estática; la lógica privada y las operaciones sensibles se ejecutan en Supabase.
 
@@ -63,7 +65,7 @@ En el proyecto Supabase activo se comprobó que:
 
 Las fuentes se han sincronizado desde el proyecto activo de Supabase al repositorio el 27-10-2026:
 
-- `supabase/functions/email-worker/index.ts` — versión activa 16; utiliza Brevo y secretos de entorno.
+- `supabase/functions/email-worker/index.ts` — versión activa 19; utiliza Brevo y secretos de entorno.
 - `supabase/functions/booking-action/index.ts` — versión activa 3; consume los tokens de confirmación/rechazo mediante el RPC de servidor.
 
 La copia a GitHub no cambia la versión desplegada en producción. Nunca copies claves API, tokens o secretos al repositorio. No despliegues `process-email-queue` para sustituir a `email-worker`: sigue siendo una implementación heredada basada en Resend.
@@ -211,7 +213,7 @@ Revisa al menos:
 
 Después de superar las pruebas:
 
-1. Comprueba GitHub Pages.
+1. Comprueba el estado del Worker público en Cloudflare y verifica que la web responde desde su URL de producción.
 2. Abre la web en ventana privada.
 3. Comprueba que no se necesita iniciar sesión para consultar espacios.
 4. Comprueba que el área privada sí exige autenticación.
