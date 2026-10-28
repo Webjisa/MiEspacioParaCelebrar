@@ -1681,3 +1681,101 @@ body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta):not(.active):not(
 body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta):not(.active):not([aria-current="page"]):hover{
   color:#bd6348!important;
 }
+
+
+/* V20 — acabado definitivo de navegación y CTA (28-10-2026) */
+/* El enlace solo muestra subrayado cuando corresponde a la página actual.
+   El hover cambia suavemente el color, sin añadir una segunda línea. */
+body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta)::after{
+  bottom:0!important;
+  height:2px!important;
+  background:#bd6348!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta):hover::after{
+  transform:scaleX(0)!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a.active:not(.nav-cta)::after,
+body:not(.home-redesign) .site-header .nav>nav>a[aria-current="page"]:not(.nav-cta)::after{
+  transform:scaleX(1)!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a.active:not(.nav-cta),
+body:not(.home-redesign) .site-header .nav>nav>a[aria-current="page"]:not(.nav-cta){
+  color:#bd6348!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+  text-decoration:none!important;
+  padding-bottom:5px;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta)::after{
+  bottom:0!important;
+  height:2px!important;
+  background:#bd6348!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta):hover::after{
+  transform:scaleX(0)!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.active:not(.nav-cta)::after,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a[aria-current="page"]:not(.nav-cta)::after{
+  transform:scaleX(1)!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.active:not(.nav-cta),
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a[aria-current="page"]:not(.nav-cta){
+  color:#bd6348!important;
+  box-shadow:none!important;
+}
+/* CTA idéntico en portada y páginas interiores. */
+.site-header .nav>nav>a.nav-cta,
+.site-header .nav>nav>a.nav-cta:visited,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:visited{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:16px!important;
+  min-height:54px!important;
+  padding:10px 24px!important;
+  background:#c9cdbb!important;
+  background-color:#c9cdbb!important;
+  color:#344238!important;
+  border:0!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  font-size:14px!important;
+  font-weight:700!important;
+  text-decoration:none!important;
+  transform:none!important;
+  transition:background-color .18s ease,color .18s ease!important;
+}
+.site-header .nav>nav>a.nav-cta:hover,
+.site-header .nav>nav>a.nav-cta:focus-visible,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:hover,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:focus-visible{
+  background:#c9cdbb!important;
+  background-color:#c9cdbb!important;
+  color:#344238!important;
+  border:0!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.site-header .nav>nav>a.nav-cta svg,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta svg{
+  width:22px!important;
+  height:22px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta .nav-cta-second{
+  display:inline!important;
+  opacity:1!important;
+  font-weight:600!important;
+}
+@media(max-width:700px){
+  .site-header .nav>nav>a.nav-cta,
+  body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta{
+    gap:10px!important;
+    min-height:46px!important;
+    padding:8px 15px!important;
+    font-size:12px!important;
+  }
+}
