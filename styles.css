@@ -1884,3 +1884,41 @@ body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:f
     font-size:12px!important;
   }
 }
+
+
+/* V23 — cabecera común en portada y páginas interiores (28-10-2026) */
+.site-header .container.nav,
+body.home-redesign .site-header.home-modern-header .container.nav{width:min(1160px,calc(100% - 40px))!important;height:72px!important;min-height:72px!important;margin-inline:auto!important;display:flex!important;align-items:center!important;gap:30px!important}
+.site-header .container.nav>.brand,
+body.home-redesign .site-header.home-modern-header .container.nav>.brand{display:flex!important;align-items:center!important;flex:0 0 auto!important;min-width:0!important;margin-right:auto!important}
+.site-header .container.nav>.brand .brand-logo,
+body.home-redesign .site-header.home-modern-header .container.nav>.brand .brand-logo{display:block!important;width:138px!important;max-width:138px!important;height:auto!important;max-height:57px!important;object-fit:contain!important}
+.site-header .container.nav>nav,
+body.home-redesign .site-header.home-modern-header .container.nav>nav{display:flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:flex-end!important;gap:22px!important;margin:0!important}
+.site-header .container.nav>nav>a:not(.nav-cta),
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a:not(.nav-cta){position:relative!important;display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:center!important;min-height:44px!important;padding:4px 0!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:#26372e!important;font-family:"Manrope",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;font-size:13px!important;font-weight:650!important;letter-spacing:-.025em!important;line-height:1.25!important;text-decoration:none!important;white-space:nowrap!important;transition:color .18s ease!important}
+.site-header .container.nav>nav>a:not(.nav-cta)::after,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a:not(.nav-cta)::after{content:none!important;display:none!important}
+.site-header .container.nav>nav>a:not(.nav-cta):hover,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a:not(.nav-cta):hover{color:#a84f37!important;border-bottom-color:transparent!important;background:transparent!important;box-shadow:none!important}
+.site-header .container.nav>nav>a.active:not(.nav-cta),
+.site-header .container.nav>nav>a[aria-current="page"]:not(.nav-cta),
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.active:not(.nav-cta),
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a[aria-current="page"]:not(.nav-cta){color:#bd6348!important;font-weight:750!important;border:0!important;border-bottom:2px solid #bd6348!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+/* Botón CTA común, con tamaño y colores idénticos en las cinco páginas. */
+.site-header .container.nav>nav>a.nav-cta,
+.site-header .container.nav>nav>a.nav-cta:visited,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta:visited{display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:center!important;gap:16px!important;min-height:54px!important;margin:0!important;padding:10px 24px!important;border:0!important;border-radius:999px!important;background:#c9cdbb!important;color:#344238!important;box-shadow:none!important;font-family:"Manrope",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;font-size:14px!important;font-weight:700!important;line-height:1.25!important;text-decoration:none!important;white-space:nowrap!important;transform:none!important;transition:background-color .18s ease!important}
+.site-header .container.nav>nav>a.nav-cta span,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta span{color:#344238!important}
+.site-header .container.nav>nav>a.nav-cta .nav-cta-second,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta .nav-cta-second{display:inline!important;opacity:1!important;font-weight:600!important}
+.site-header .container.nav>nav>a.nav-cta svg,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta svg{display:block!important;flex:0 0 auto!important;width:22px!important;height:22px!important;margin:0!important;fill:none!important;stroke:#344238!important;stroke-width:1.8!important}
+.site-header .container.nav>nav>a.nav-cta:hover,
+.site-header .container.nav>nav>a.nav-cta:focus-visible,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta:hover,
+body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta:focus-visible{background:#c9cdbb!important;color:#344238!important;border:0!important;box-shadow:none!important;transform:none!important}
+@media(max-width:1150px) and (min-width:851px){.site-header .container.nav,body.home-redesign .site-header.home-modern-header .container.nav{gap:18px!important}.site-header .container.nav>nav,body.home-redesign .site-header.home-modern-header .container.nav>nav{gap:16px!important}.site-header .container.nav>nav>a.nav-cta,body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta{gap:10px!important;padding-inline:16px!important;font-size:12px!important}}
+@media(max-width:850px){.site-header .container.nav,body.home-redesign .site-header.home-modern-header .container.nav{width:calc(100% - 32px)!important;height:64px!important;min-height:64px!important;gap:14px!important}.site-header .container.nav>.brand .brand-logo,body.home-redesign .site-header.home-modern-header .container.nav>.brand .brand-logo{width:125px!important;max-width:125px!important;max-height:52px!important}.site-header .container.nav>nav,body.home-redesign .site-header.home-modern-header .container.nav>nav{display:none!important}}
