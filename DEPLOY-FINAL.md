@@ -261,11 +261,11 @@ Flujo definitivo:
 
 En Supabase → Authentication → URL Configuration debe estar permitida esta URL de redirección:
 
-`https://webjisa.github.io/MiEspacioParaCelebrar/activar-cuenta.html`
+`https://miespacioparacelebrar.jisaweb.workers.dev/activar-cuenta.html`
 
 Para recuperación de contraseña debe estar permitida también:
 
-`https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html`
+`https://miespacioparacelebrar.jisaweb.workers.dev/restablecer-contrasena.html`
 
 La Edge Function `create-owner` incluida en este proyecto debe desplegarse en Supabase antes de utilizar el alta de propietarios.
 
