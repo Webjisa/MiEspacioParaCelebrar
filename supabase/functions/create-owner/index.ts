@@ -88,7 +88,7 @@ export default {
       const { data: authData, error: authError } =
         await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(email, {
           redirectTo:
-            "https://webjisa.github.io/MiEspacioParaCelebrar/activar-cuenta.html",
+            "https://miespacioparacelebrar.jisaweb.workers.dev/activar-cuenta.html",
         });
 
       if (authError) {
