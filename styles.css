@@ -1590,3 +1590,47 @@ body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:h
   border-radius: 22px !important;
   box-shadow: 0 10px 24px rgba(39,51,43,.10) !important;
 }
+
+
+/* Ajuste de distribución de fechas en Consulta tu fecha */
+body:not(.home-redesign) .availability-search-card{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  align-items:start;
+  column-gap:24px;
+  row-gap:12px;
+}
+body:not(.home-redesign) .availability-search-card .date-picker-wrap{
+  display:block;
+  position:relative;
+  width:100%;
+  min-width:0;
+  margin:0;
+}
+body:not(.home-redesign) .availability-search-card .booking-date-input{
+  display:block;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  padding-right:52px;
+}
+body:not(.home-redesign) .availability-search-card .date-picker-toggle{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:36px;
+  height:36px;
+  margin:0;
+}
+body:not(.home-redesign) .availability-search-card #searchAvailability,
+body:not(.home-redesign) .availability-search-card #availabilityMessage{
+  grid-column:1 / -1;
+  justify-self:start;
+}
+body:not(.home-redesign) .availability-search-card #searchAvailability{margin-top:4px}
+@media(max-width:700px){
+  body:not(.home-redesign) .availability-search-card{grid-template-columns:minmax(0,1fr);gap:14px}
+  body:not(.home-redesign) .availability-search-card #searchAvailability,
+  body:not(.home-redesign) .availability-search-card #availabilityMessage{grid-column:1}
+  body:not(.home-redesign) .availability-search-card #searchAvailability{width:100%}
+}
