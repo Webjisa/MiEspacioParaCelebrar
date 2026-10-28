@@ -55,7 +55,7 @@
    msg.textContent='Enviando…';
    let error=null;
    try{
-     const options={redirectTo:'https://webjisa.github.io/MiEspacioParaCelebrar/restablecer-contrasena.html'};
+     const options={redirectTo:'https://miespacioparacelebrar.jisaweb.workers.dev/restablecer-contrasena.html'};
      if(tokenForRequest)options.captchaToken=tokenForRequest;
      const result=await c.auth.resetPasswordForEmail(document.querySelector('#email').value.trim(),options);
      error=result.error;
