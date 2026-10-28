@@ -1945,3 +1945,63 @@ body.home-redesign .site-header.home-modern-header{
     display:flex!important;
   }
 }
+
+
+/* V24 — escala visual más equilibrada y tipografía única en toda la web */
+:root{
+  --font-site:"Manrope",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --text-base:15px;
+}
+html{font-size:16px!important;-webkit-text-size-adjust:100%}
+body,button,input,select,textarea,
+h1,h2,h3,h4,h5,h6,p,a,li,label,small,strong,em,summary,legend,
+.site-header,.site-header *,
+main,main *:not(svg):not(path):not(i[class*="icon"]){
+  font-family:var(--font-site)!important;
+}
+body{font-size:15px!important;line-height:1.65!important}
+p,li{font-size:15px;line-height:1.7}
+small,.small,.muted,.help-text,.form-hint{font-size:13px;line-height:1.55}
+h1{font-size:clamp(30px,3.6vw,46px)!important;line-height:1.12!important;letter-spacing:-.035em!important;font-weight:750!important}
+h2{font-size:clamp(25px,2.8vw,35px)!important;line-height:1.18!important;letter-spacing:-.03em!important;font-weight:750!important}
+h3{font-size:clamp(19px,2vw,24px)!important;line-height:1.28!important;letter-spacing:-.02em!important;font-weight:700!important}
+h4{font-size:17px!important;line-height:1.35!important;font-weight:700!important}
+button,input,select,textarea{font-size:14px!important;line-height:1.45}
+label{font-size:13px!important;line-height:1.45!important;font-weight:700!important}
+.btn,.button,button[type="submit"],input[type="submit"]{font-size:14px!important;font-weight:700!important}
+.container{width:min(1120px,calc(100% - 48px))}
+.section,.booking-section,.gallery-section{padding-top:64px;padding-bottom:64px}
+.page-intro{padding:64px 0 48px!important}
+.page-intro h1{font-size:clamp(30px,3.6vw,44px)!important;line-height:1.12!important;margin-bottom:16px!important}
+.page-intro>div>p:last-child{font-size:16px!important;line-height:1.65!important}
+.hero{min-height:560px}
+.hero-content{padding:76px 0}
+.hero h1{font-size:clamp(34px,4.6vw,58px)!important;line-height:1.04!important}
+.hero-copy{font-size:17px!important;line-height:1.65!important}
+.section h2,.space-info h3,.space-info h2{font-size:clamp(25px,2.8vw,35px)!important;line-height:1.18!important}
+.space-info{padding:32px}
+.space-info h3,.space-info h2{margin:12px 0 8px!important}
+.space-photo{min-height:340px}
+.booking-grid{gap:40px}
+.booking-card{padding:24px}
+.card,.panel,.form-card,.admin-card,.private-card{border-radius:18px}
+@media(max-width:850px){
+  body{font-size:15px!important}
+  .container{width:calc(100% - 32px)!important}
+  .section,.booking-section,.gallery-section{padding-top:44px;padding-bottom:44px}
+  .page-intro{padding:44px 0 34px!important}
+  .hero{min-height:460px}
+  .hero-content{padding:56px 0}
+  .hero h1{font-size:clamp(30px,8vw,42px)!important}
+  .hero-copy{font-size:16px!important}
+  .space-info{padding:24px}
+  .space-photo{min-height:260px}
+  .booking-grid{grid-template-columns:1fr!important;gap:24px!important}
+}
+@media(max-width:520px){
+  h1{font-size:30px!important}
+  h2{font-size:25px!important}
+  h3{font-size:19px!important}
+  p,li{font-size:14px;line-height:1.65}
+  .btn,.button,button[type="submit"],input[type="submit"]{min-height:44px!important;padding-inline:16px!important}
+}
