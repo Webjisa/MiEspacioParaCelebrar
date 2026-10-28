@@ -49,7 +49,12 @@
    e.preventDefault();
    const msg=document.querySelector('#requestMessage');
    msg.classList.remove('error');
-   // Supabase valida el token cuando CAPTCHA está activado y evita bloquear el flujo antes de ello.
+   // No enviar solicitudes si Turnstile no ha entregado un token válido.
+   if(window.MIESPACIO_TURNSTILE && !captchaToken){
+     msg.textContent='Espera a que termine la verificación de seguridad y vuelve a intentarlo.';
+     msg.classList.add('error');
+     return;
+   }
    const tokenForRequest=captchaToken;
    captchaToken='';
    msg.textContent='Enviando…';
