@@ -23,7 +23,7 @@
 ## Pendiente de verificación
 - **Publicación frontend en Cloudflare:** el código está en GitHub, pero no se pudo verificar desde esta sesión el despliegue del Worker ni hacer pruebas visuales reales en navegador.
 - **Pruebas extremo a extremo:** todavía deben probarse con cuenta/datos de prueba la activación de propietario, recuperación de contraseña y el ciclo completo de solicitud, confirmación/rechazo y correos. No se crearon reservas ni se enviaron correos de prueba a clientes durante esta auditoría.
-- **Seguridad de contraseñas filtradas:** el asesor de Supabase indica que la protección de contraseñas comprometidas está desactivada; debe activarse en la configuración de Auth.
+- **Configuración de Auth pendiente:** el asesor de Supabase indica que la protección de contraseñas comprometidas está desactivada; debe activarse en Auth. También conviene retirar de Auth → URL Configuration las redirecciones antiguas de GitHub Pages y conservar solo el dominio Worker y callbacks necesarios. No pude cambiar estos ajustes del panel desde las herramientas disponibles.
 - **Avisos no modificados a ciegas:** Supabase señala `pg_net` instalado en `public`, políticas RLS permisivas solapadas y RPC `SECURITY DEFINER` accesibles según rol. Antes de ajustar estos elementos hay que validar las dependencias de cron y los permisos funcionales.
 - **Imágenes:** cargar fotografías reales para Bajo casa antes de ofrecer su ficha con galería.
 
