@@ -53,7 +53,7 @@ No guardar secretos en el frontend ni en GitHub. La service role key de Supabase
 ## Publicación y sincronización de producción
 
 La web pública se sirve desde Cloudflare Worker y la lógica sensible se ejecuta en Supabase. En la auditoría del 28-10-2026 se corrigieron y desplegaron los enlaces transaccionales para usar el dominio de producción. Versiones activas verificadas:
-- `supabase/functions/email-worker/index.ts` — versión desplegada 19, envío mediante Brevo y enlaces al dominio Worker.
+- `supabase/functions/email-worker/index.ts` — versión desplegada 20, envío mediante Brevo y enlaces al dominio Worker.
 - `supabase/functions/create-owner/index.ts` — versión desplegada 13, invitación/activación al dominio Worker.
 - `supabase/functions/resend-owner-invitation/index.ts` — versión desplegada 12, reenvío de invitación al dominio Worker.
 - `supabase/functions/booking-action/index.ts` — versión desplegada 3, procesa el token de decisión de reserva.
