@@ -487,12 +487,19 @@ function initCompactPublicUI(){
         if(privateLink)nav.insertBefore(a,privateLink);else nav.appendChild(a);
       }
       links=[...nav.querySelectorAll('a')];
-      const currentFile=path.split('/').pop()||'index.html';
+      // Normaliza rutas limpias de Cloudflare (/espacios) y archivos clásicos (/espacios.html).
+      const normalizePublicPage=value=>{
+        const part=String(value||'').split(/[?#]/)[0].replace(/\\/+$/,'').split('/').pop().toLowerCase();
+        const page=part.replace(/\\.html$/i,'');
+        if(!page||page==='index')return 'index';
+        if(page==='espacio')return 'espacios';
+        if(page==='area-privada'||page==='admin')return 'acceso';
+        return page;
+      };
+      const currentPage=normalizePublicPage(path);
       links.forEach(a=>{
-        const href=String(a.getAttribute('href')||'').split(/[?#]/)[0].split('/').pop().toLowerCase();
-        const active=href===currentFile
-          ||(currentFile==='espacio.html'&&href==='espacios.html')
-          ||(isAdminPage&&href==='area-privada.html');
+        const hrefPage=normalizePublicPage(a.getAttribute('href')||'');
+        const active=hrefPage===currentPage;
         a.classList.toggle('active',active);
         if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
       });
