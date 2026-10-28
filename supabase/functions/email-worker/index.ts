@@ -3,7 +3,7 @@ const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY') ?? '';
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') ?? '';
 const EMAIL_FROM_NAME = Deno.env.get('EMAIL_FROM_NAME') || 'MiEspacioParaCelebrar';
-const APP_BASE_URL = (Deno.env.get('APP_BASE_URL') || 'https://miespacioparacelebrar.jisaweb.workers.dev').replace(/\/$/, '');
+const APP_BASE_URL = 'https://miespacioparacelebrar.jisaweb.workers.dev';
 
 function getServiceKey(): string {
   const direct = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SECRET_KEY');
