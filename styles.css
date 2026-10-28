@@ -1922,3 +1922,13 @@ body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta:
 body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta:focus-visible{background:#c9cdbb!important;color:#344238!important;border:0!important;box-shadow:none!important;transform:none!important}
 @media(max-width:1150px) and (min-width:851px){.site-header .container.nav,body.home-redesign .site-header.home-modern-header .container.nav{gap:18px!important}.site-header .container.nav>nav,body.home-redesign .site-header.home-modern-header .container.nav>nav{gap:16px!important}.site-header .container.nav>nav>a.nav-cta,body.home-redesign .site-header.home-modern-header .container.nav>nav>a.nav-cta{gap:10px!important;padding-inline:16px!important;font-size:12px!important}}
 @media(max-width:850px){.site-header .container.nav,body.home-redesign .site-header.home-modern-header .container.nav{width:calc(100% - 32px)!important;height:64px!important;min-height:64px!important;gap:14px!important}.site-header .container.nav>.brand .brand-logo,body.home-redesign .site-header.home-modern-header .container.nav>.brand .brand-logo{width:125px!important;max-width:125px!important;max-height:52px!important}}
+
+
+/* Acabado común de la franja superior en todas las páginas */
+.site-header,
+body.home-redesign .site-header.home-modern-header{
+  background:rgba(255,253,250,.94)!important;
+  border-bottom:1px solid rgba(31,43,35,.08)!important;
+  backdrop-filter:blur(14px)!important;
+  -webkit-backdrop-filter:blur(14px)!important;
+}
