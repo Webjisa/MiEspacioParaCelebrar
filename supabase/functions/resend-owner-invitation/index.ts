@@ -110,7 +110,7 @@ export default {
           owner.email,
           {
             redirectTo:
-              "https://webjisa.github.io/MiEspacioParaCelebrar/activar-cuenta.html",
+              "https://miespacioparacelebrar.jisaweb.workers.dev/activar-cuenta.html",
           },
         );
 
