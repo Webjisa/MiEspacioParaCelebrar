@@ -489,8 +489,8 @@ function initCompactPublicUI(){
       links=[...nav.querySelectorAll('a')];
       // Normaliza rutas limpias de Cloudflare (/espacios) y archivos clásicos (/espacios.html).
       const normalizePublicPage=value=>{
-        const part=String(value||'').split(/[?#]/)[0].replace(/\\/+$/,'').split('/').pop().toLowerCase();
-        const page=part.replace(/\\.html$/i,'');
+        const part=String(value||'').split(/[?#]/)[0].replace(/\/+$/,'').split('/').pop().toLowerCase();
+        const page=part.replace(/\.html$/i,'');
         if(!page||page==='index')return 'index';
         if(page==='espacio')return 'espacios';
         if(page==='area-privada'||page==='admin')return 'acceso';
