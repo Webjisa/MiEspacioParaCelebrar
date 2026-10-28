@@ -4,7 +4,7 @@
   var path = window.location.pathname || "/";
   var current = path.replace(/\/+$/, "").split("/").pop().replace(/\.html$/i, "");
   if (!current || current === "/") current = "index";
-  var sectionNames = ["espacios", "como-funciona", "disponibilidad", "acceso"];
+  var sectionNames = ["index", "espacios", "como-funciona", "disponibilidad", "acceso"];
 
   document.querySelectorAll(".site-header nav a[href]").forEach(function (link) {
     if (link.classList.contains("nav-cta")) return;
