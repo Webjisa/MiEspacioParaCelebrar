@@ -1634,3 +1634,50 @@ body:not(.home-redesign) .availability-search-card #searchAvailability{margin-to
   body:not(.home-redesign) .availability-search-card #availabilityMessage{grid-column:1}
   body:not(.home-redesign) .availability-search-card #searchAvailability{width:100%}
 }
+
+
+/* V19 — cabecera unificada en todas las páginas (28-10-2026) */
+.site-header .nav>nav>a.nav-cta,
+.site-header .nav>nav>a.nav-cta:visited,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:visited{
+  background:#c9cdbb!important;
+  background-color:#c9cdbb!important;
+  color:#344238!important;
+  border:0!important;
+  box-shadow:none!important;
+  border-radius:22px!important;
+}
+.site-header .nav>nav>a.nav-cta:hover,
+.site-header .nav>nav>a.nav-cta:focus-visible,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:hover,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:focus-visible{
+  background:#bec4ad!important;
+  background-color:#bec4ad!important;
+  color:#26382f!important;
+  border-color:transparent!important;
+}
+.site-header .nav>nav>a.nav-cta svg,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta svg{
+  stroke:currentColor!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a.active:not(.nav-cta),
+body:not(.home-redesign) .site-header .nav>nav>a[aria-current="page"]:not(.nav-cta){
+  color:#bd6348!important;
+  font-weight:700!important;
+  box-shadow:inset 0 -2px 0 #bd6348!important;
+  text-decoration:none!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a.active:not(.nav-cta),
+body:not(.home-redesign) .site-header .nav>nav>a[aria-current="page"]:not(.nav-cta){
+  padding-bottom:8px;
+}
+body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta):not(.active):not([aria-current="page"]){
+  color:#172820!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta):not(.active):not([aria-current="page"]):hover{
+  color:#bd6348!important;
+}
