@@ -49,8 +49,8 @@ function decisionUrl(token: string, action: 'confirm'|'reject'): string {
   return `${APP_BASE_URL}/decidir-reserva.html?token=${encodeURIComponent(token)}&action=${action}`;
 }
 
-function privateUrl(payload: any): string {
-  return payload?.private_area_url || `${APP_BASE_URL}/area-privada.html`;
+function privateUrl(_payload: any): string {
+  return `${APP_BASE_URL}/area-privada.html`;
 }
 
 function statusLabel(value: unknown): string {
