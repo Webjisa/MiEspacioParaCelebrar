@@ -90,7 +90,7 @@ async function initMap(id,spaces,single=false){
   const resolved=[];for(const s of spaces)resolved.push(await geocodeSpace(s));
   const points=resolved.filter(s=>s.latitude!==null&&s.latitude!==''&&s.longitude!==null&&s.longitude!==''&&Number.isFinite(Number(s.latitude))&&Number.isFinite(Number(s.longitude)));
   if(!points.length){el.innerHTML='<div class="map-empty">La ubicación exacta todavía no está configurada. El administrador puede introducir la dirección y localizar el espacio desde su área privada.</div>';return;}
-  const map=L.map(el,{scrollWheelZoom:false});L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const bounds=[];
+  const map=L.map(el,{scrollWheelZoom:false});L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=cb1_4k0x_2_96ec1c78b9bc582daf58a397',{subdomains:'abcd',minZoom:0,maxZoom:20,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution/">CARTO</a>'}).addTo(map);const bounds=[];
   points.forEach(s=>{
     const lat=Number(s.latitude),lon=Number(s.longitude),p=[lat,lon];bounds.push(p);
     const viewLink=single?'':`<a class="map-popup-view" href="espacio.html?id=${encodeURIComponent(s.id)}">Ver espacio</a>`;
