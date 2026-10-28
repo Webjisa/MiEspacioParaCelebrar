@@ -1779,3 +1779,108 @@ body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta .
     font-size:12px!important;
   }
 }
+
+
+/* V22 — estado activo inequívoco y CTA unificado en todas las rutas */
+body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta){
+  border-bottom:2px solid transparent!important;
+  box-shadow:none!important;
+  text-decoration:none!important;
+  padding-bottom:5px!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta)::after{
+  display:none!important;
+  content:none!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a:not(.nav-cta):hover{
+  color:#bd6348!important;
+  border-bottom-color:transparent!important;
+}
+body:not(.home-redesign) .site-header .nav>nav>a.active:not(.nav-cta),
+body:not(.home-redesign) .site-header .nav>nav>a[aria-current="page"]:not(.nav-cta){
+  color:#bd6348!important;
+  font-weight:750!important;
+  border-bottom:2px solid #bd6348!important;
+  box-shadow:none!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta){
+  border-bottom:2px solid transparent!important;
+  box-shadow:none!important;
+  padding-bottom:4px!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta)::after{
+  display:none!important;
+  content:none!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta):hover{
+  color:#a84f37!important;
+  border-bottom-color:transparent!important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.active:not(.nav-cta),
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a[aria-current="page"]:not(.nav-cta){
+  color:#bd6348!important;
+  border-bottom:2px solid #bd6348!important;
+  font-weight:750!important;
+}
+/* El CTA conserva las mismas proporciones y colores en todas las cabeceras. */
+.site-header .nav>nav>a.nav-cta,
+.site-header .nav>nav>a.nav-cta:visited,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:visited{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:16px!important;
+  min-height:54px!important;
+  padding:10px 24px!important;
+  background:#c9cdbb!important;
+  background-color:#c9cdbb!important;
+  color:#344238!important;
+  border:0!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  font-size:14px!important;
+  font-weight:700!important;
+  line-height:1.25!important;
+  text-decoration:none!important;
+  transform:none!important;
+  transition:background-color .18s ease!important;
+}
+.site-header .nav>nav>a.nav-cta span,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta span{
+  color:#344238!important;
+}
+.site-header .nav>nav>a.nav-cta .nav-cta-second,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta .nav-cta-second{
+  display:inline!important;
+  opacity:1!important;
+  font-weight:600!important;
+}
+.site-header .nav>nav>a.nav-cta svg,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta svg{
+  width:22px!important;
+  height:22px!important;
+  fill:none!important;
+  stroke:#344238!important;
+  stroke-width:1.8!important;
+}
+.site-header .nav>nav>a.nav-cta:hover,
+.site-header .nav>nav>a.nav-cta:focus-visible,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:hover,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:focus-visible{
+  background:#c9cdbb!important;
+  background-color:#c9cdbb!important;
+  color:#344238!important;
+  border:0!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+@media(max-width:700px){
+  .site-header .nav>nav>a.nav-cta,
+  body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta{
+    gap:10px!important;
+    min-height:46px!important;
+    padding:8px 15px!important;
+    font-size:12px!important;
+  }
+}
