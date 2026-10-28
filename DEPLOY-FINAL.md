@@ -65,7 +65,7 @@ En el proyecto Supabase activo se comprobó que:
 
 Las fuentes se han sincronizado desde el proyecto activo de Supabase al repositorio el 27-10-2026:
 
-- `supabase/functions/email-worker/index.ts` — versión activa 19; utiliza Brevo y secretos de entorno.
+- `supabase/functions/email-worker/index.ts` — versión activa 20; utiliza Brevo y secretos de entorno.
 - `supabase/functions/booking-action/index.ts` — versión activa 3; consume los tokens de confirmación/rechazo mediante el RPC de servidor.
 
 La copia a GitHub no cambia la versión desplegada en producción. Nunca copies claves API, tokens o secretos al repositorio. No despliegues `process-email-queue` para sustituir a `email-worker`: sigue siendo una implementación heredada basada en Resend.
