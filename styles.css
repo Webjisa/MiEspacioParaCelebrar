@@ -1564,3 +1564,29 @@ body.home-redesign .modern-step{padding-left:0;padding-right:0}
 @media(max-width:850px){
  .site-header .nav nav a.nav-cta{background:#c9cdbb!important;color:#344238!important;border-radius:14px;min-height:46px;padding:0 14px;font-size:14px;font-weight:700}
 }
+
+
+/* Corrección solicitada 28-10-2026: en la portada solo el CTA conserva fondo */
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta),
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta):visited {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  color: var(--ink) !important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a:not(.nav-cta):hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--home-terracotta-dark, var(--accent)) !important;
+}
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta,
+body.home-redesign .site-header.home-modern-header .nav>nav.home-nav>a.nav-cta:hover {
+  background: #c9cdbb !important;
+  background-color: #c9cdbb !important;
+  border-radius: 22px !important;
+  box-shadow: 0 10px 24px rgba(39,51,43,.10) !important;
+}
